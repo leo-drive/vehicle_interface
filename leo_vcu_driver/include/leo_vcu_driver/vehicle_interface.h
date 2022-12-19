@@ -171,5 +171,61 @@ struct CompToLlcData
   uint8_t eof_id2;
 };
 
+struct __attribute__((packed)) veh_dyn_info_msg{
+  float linear_veh_velocity;
+  float front_wheel_angle;
+};
+
+
+struct __attribute__((packed)) veh_sgnl_status_msg{
+  uint8_t fuel;
+  uint8_t blinker;
+  uint8_t headlight;
+  uint8_t wiper;
+  uint8_t gear;
+  uint8_t mode;
+  uint8_t hand_brake;
+  uint8_t horn;
+};
+
+struct __attribute__((packed)) motion_info_msg{
+  uint8_t intervention;
+  uint8_t ready;
+  uint8_t motion_allow;
+  uint8_t throttle;
+  uint8_t brake;
+  uint16_t front_steer;
+};
+
+struct __attribute__((packed)) motor_info_msg{
+  uint8_t temp;
+  uint16_t rpm;
+};
+
+struct __attribute__((packed)) long_cmd_msg1{
+  float set_long_accel;
+  float set_limit_velocity;
+};
+
+struct __attribute__((packed)) long_cmd_msg2{
+  float set_gas_pedal_pos;
+  float set_brake_pedal_pos;
+};
+
+struct __attribute__((packed)) veh_sgnl_cmd_msg{
+  uint8_t blinker;
+  uint8_t headlight;
+  uint8_t wiper;
+  uint8_t gear;
+  uint8_t mode;
+  uint8_t hand_brake;
+  uint8_t horn;
+  uint8_t reserved;
+};
+
+struct __attribute__((packed)) front_wheel_cmd_msg{
+  float set_front_wheel_angle;
+  float set_front_wheel_angle_rate;
+};
 
 #endif //BUILD_VEHICLE_INTERFACE_H

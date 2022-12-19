@@ -12,25 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
+
 #include <leo_vcu_driver/leo_vcu_driver.hpp>
 
 #include <algorithm>
 #include <limits>
 #include <memory>
 #include <utility>
+
+using SubAllocT = rclcpp::SubscriptionOptionsWithAllocator<std::allocator<void>>;
 using namespace std::placeholders;
+
+using rcl_interfaces::msg::ParameterDescriptor;
+using rclcpp::ParameterValue;
+using namespace std::chrono_literals;
 
 LeoVcuDriver::LeoVcuDriver()
 : Node("leo_vcu_driver"),
   vehicle_info_(vehicle_info_util::VehicleInfoUtil(*this).getVehicleInfo()),
   updater_(this)
+
+
+
 {
   /// Get Params Here!
-
   base_frame_id_ = declare_parameter("base_frame_id", "base_link");
   command_timeout_ms_ = declare_parameter("command_timeout_ms", 1000.0);
   loop_rate_ = declare_parameter("loop_rate", 100.0);
-
   /* parameters for vehicle specifications */
   wheel_base_ = static_cast<float>(vehicle_info_.wheel_base_m);
   reverse_gear_enabled_ = declare_parameter("reverse_gear_enabled", false);
@@ -121,11 +130,21 @@ LeoVcuDriver::LeoVcuDriver()
   updater_.add("bbw_timeout", this, &LeoVcuDriver::checkBBWTimeoutError);
 
   // Timer
+  loop_rate_ = 1;
   const auto period_ns = rclcpp::Rate(loop_rate_).period();
   tim_data_sender_ = rclcpp::create_timer(
     this, get_clock(), period_ns, std::bind(&LeoVcuDriver::llc_publisher, this));
   serial = new CallbackAsyncSerial;
   current_emergency_acceleration = -std::fabs(soft_stop_acceleration);
+
+  recv_frame_topic_ = declare_parameter("recv_frame_topic", "/can_driver/received_frame");
+  sub_recv_frame_ = this->create_subscription<ros2_can_msgs::msg::Frame>(
+          recv_frame_topic_, rclcpp::QoS{1}, std::bind(&LeoVcuDriver::receivedFrameCallback, this, _1));
+
+  send_frame_topic = declare_parameter("send_frame_topic", "/can_driverx/send_frame");
+  pub_send_frame_ = this->create_publisher<ros2_can_msgs::msg::Frame>(
+          send_frame_topic, rclcpp::QoS{10});
+
 }
 void LeoVcuDriver::onHazardStatusStamped(
   const autoware_auto_system_msgs::msg::HazardStatusStamped::ConstSharedPtr msg)
@@ -554,6 +573,8 @@ float LeoVcuDriver::steering_wheel_to_steering_tire_angle(
 
 void LeoVcuDriver::llc_publisher()
 {
+
+  sendCanFrame();
   bool emergency_send{false};
 
   // TODO(brkay54): Check the jerk data is enabled?
@@ -945,4 +966,39 @@ void LeoVcuDriver::onAutowareState(const autoware_auto_system_msgs::msg::Autowar
   } else {
     send_data.hand_brake = 1;
   }
+}
+
+void LeoVcuDriver::receivedFrameCallback(ros2_can_msgs::msg::Frame::SharedPtr msg) {
+    msg_recv_can_frame_ = msg;
+    if(!msg_recv_can_frame_->send_flag) {
+      switch (msg_recv_can_frame_->id) {
+        case 1041:
+          std::memcpy(&vehDynInfoMsg_, &msg_recv_can_frame_->data, 8);
+          break;
+        case 1042:
+          std::memcpy(&vehSgnlStatusMsg_, &msg_recv_can_frame_->data, 8);
+          break;
+        case 1043:
+          std::memcpy(&motionInfoMsg_, &msg_recv_can_frame_->data, 8);
+          break;
+        case 1044:
+          std::memcpy(&motorInfoMsg_, &msg_recv_can_frame_->data, 8);
+          break;
+        default:
+          RCLCPP_ERROR(this->get_logger(), "Invalid CanId\n");
+          break;
+      }
+    }
+}
+
+void LeoVcuDriver::sendCanFrame() {
+  msg_send_can_frame_.set__id(static_cast<uint32_t>(72));
+  msg_send_can_frame_.set__dlc(static_cast<uint8_t>(8));
+  msg_send_can_frame_.set__send_flag(true);
+    for (int i = 0; i < 8; ++i) {
+      msg_send_can_frame_.data[i] = 31;
+    }
+    pub_send_frame_->publish(msg_send_can_frame_);
+  msg_send_can_frame_.set__send_flag(false);
+
 }

@@ -16,3 +16,5 @@
     enable_cmd_timeout_emergency: true
     enable_debugger: false
     steering_offset: 0.001
+    send_frame_topic: "/can_driver/send_frame"
+    recv_frame_topic: "/can_driver/received_frame"

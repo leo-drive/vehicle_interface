@@ -48,11 +48,11 @@
 #include <tier4_vehicle_msgs/msg/actuation_status_stamped.hpp>
 #include <tier4_vehicle_msgs/msg/steering_wheel_status_stamped.hpp>
 #include <tier4_vehicle_msgs/msg/vehicle_emergency_stamped.hpp>
-
+#include <ros2_can_msgs/msg/frame.hpp>
 #include <leo_vcu_driver/AsyncSerial.h>
 #include <leo_vcu_driver/checksum.h>
 #include <leo_vcu_driver/vehicle_interface.h>
-
+#include <linux/can.h>
 #include <bitset>
 #include <string>
 #include <vector>
@@ -252,7 +252,7 @@ private:
   // To LLC
 
   CompToLlcData_ send_data;
-  const std::string serial_name_{"/dev/ttyLLC"};
+  const std::string serial_name_{"/dev/ttyACM0"};
   CallbackAsyncSerial * serial;
   bool serial_ready{false};
   bool is_emergency_{false};
@@ -261,7 +261,6 @@ private:
   bool take_over_requested_{false};
 
   /* subscribers */
-
   // From Autoware
   rclcpp::Subscription<autoware_auto_control_msgs::msg::AckermannControlCommand>::SharedPtr
     control_cmd_sub_;
@@ -279,8 +278,8 @@ private:
     sub_hazard_status_stamped_;
   rclcpp::Subscription<autoware_auto_system_msgs::msg::AutowareState>::ConstSharedPtr autoware_state_sub_;
 
-  /* publishers */
 
+  /* publishers */
   // To Autoware
   rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::ControlModeReport>::SharedPtr
     control_mode_pub_;
@@ -351,5 +350,29 @@ private:
     0.0088624445735869754, 0.032612469460628908,  0.059706118376520081,  0.16757600370090606,
     0.2716162219588133,    0.37091961814500307,   0.46752682569741805,   0.51357256281933916,
     0.55710949337717441,   0.61005324248865378,   0.63768293444784307,   0.64};
+
+  //can testing codes
+  struct can_frame can_frame_;
+
+  std::string recv_frame_topic_;
+  std::string send_frame_topic;
+
+  ros2_can_msgs::msg::Frame::SharedPtr msg_recv_can_frame_;
+  ros2_can_msgs::msg::Frame msg_send_can_frame_;
+  rclcpp::Subscription<ros2_can_msgs::msg::Frame>::SharedPtr sub_recv_frame_;
+  rclcpp::Publisher<ros2_can_msgs::msg::Frame>::SharedPtr pub_send_frame_;
+
+  void receivedFrameCallback(ros2_can_msgs::msg::Frame::SharedPtr msg);
+  void sendCanFrame();
+
+  veh_dyn_info_msg vehDynInfoMsg_;
+  veh_sgnl_status_msg vehSgnlStatusMsg_;
+  motion_info_msg motionInfoMsg_;
+  motor_info_msg motorInfoMsg_;
+
+  long_cmd_msg1 longCmdMsg1_;
+  long_cmd_msg2 longCmdMsg2_;
+  veh_sgnl_cmd_msg vehSgnlCmdMsg_;
+  front_wheel_cmd_msg frontWheelCmdMsg_;
 };
 #endif  // LEO_VCU_DRIVER__LEO_VCU_DRIVER_HPP_

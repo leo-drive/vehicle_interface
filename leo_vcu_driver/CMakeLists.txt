@@ -3,7 +3,6 @@ project(leo_vcu_driver)
 
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
-
 if(NOT CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD 14)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -29,3 +28,4 @@ ament_auto_package(
         launch
         config
 )
+
