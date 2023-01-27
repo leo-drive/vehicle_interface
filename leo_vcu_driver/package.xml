@@ -13,11 +13,12 @@
   <depend>autoware_auto_vehicle_msgs</depend>
   <depend>autoware_auto_geometry</depend>
   <depend>diagnostic_msgs</depend>
+  <depend>diagnostic_updater</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_action</depend>
   <depend>rclcpp_components</depend>
   <depend>std_msgs</depend>
-  <depend>ros2_can_msgs</depend>
+  <depend>can_msgs</depend>
   <depend>tier4_debug_msgs</depend>
   <depend>tier4_vehicle_msgs</depend>
   <depend>tier4_control_msgs</depend>

@@ -202,6 +202,17 @@ struct __attribute__((packed)) motor_info_msg{
   uint16_t rpm;
 };
 
+struct __attribute__((packed)) error_info_msg {
+  uint8_t errMsg1;
+  uint8_t errMsg2;
+  uint8_t errMsg3;
+  uint8_t errMsg4;
+  uint8_t errMsg5;
+  uint8_t errMsg6;
+  uint8_t errMsg7;
+  uint8_t errMsg8;
+};
+
 struct __attribute__((packed)) long_cmd_msg1{
   float set_long_accel;
   float set_limit_velocity;
