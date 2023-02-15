@@ -33,21 +33,38 @@
 #include <autoware_auto_system_msgs/msg/autoware_state.hpp>
 #include <autoware_auto_vehicle_msgs/msg/control_mode_report.hpp>
 #include <autoware_auto_vehicle_msgs/msg/engage.hpp>
+
 #include <autoware_auto_vehicle_msgs/msg/gear_command.hpp>
 #include <autoware_auto_vehicle_msgs/msg/gear_report.hpp>
+
 #include <autoware_auto_vehicle_msgs/msg/hazard_lights_command.hpp>
 #include <autoware_auto_vehicle_msgs/msg/hazard_lights_report.hpp>
+
 #include <autoware_auto_vehicle_msgs/msg/steering_report.hpp>
+
 #include <autoware_auto_vehicle_msgs/msg/turn_indicators_command.hpp>
 #include <autoware_auto_vehicle_msgs/msg/turn_indicators_report.hpp>
+
 #include <autoware_auto_vehicle_msgs/msg/velocity_report.hpp>
+//mehce added starts
+#include <autoware_auto_vehicle_msgs/msg/hand_brake_command.hpp> //TODO(MehceUnisen): add callbacks new added msgs
+#include <autoware_auto_vehicle_msgs/msg/hand_brake_report.hpp>
+
+#include <autoware_auto_vehicle_msgs/msg/headlights_command.hpp>
+#include <autoware_auto_vehicle_msgs/msg/headlights_report.hpp>
+
+#include <autoware_auto_vehicle_msgs/msg/raw_control_command.hpp>
+//mehce aded ends
 #include <diagnostic_msgs/msg/diagnostic_status.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <tier4_control_msgs/msg/gate_mode.hpp>
+
 #include <tier4_vehicle_msgs/msg/actuation_command_stamped.hpp>
 #include <tier4_vehicle_msgs/msg/actuation_status_stamped.hpp>
+
 #include <tier4_vehicle_msgs/msg/steering_wheel_status_stamped.hpp>
 #include <tier4_vehicle_msgs/msg/vehicle_emergency_stamped.hpp>
+
 #include <can_msgs/msg/frame.hpp>
 //#include <leo_vcu_driver/AsyncSerial.h>
 #include <leo_vcu_driver/checksum.h>
@@ -237,7 +254,11 @@ private:
   autoware_auto_vehicle_msgs::msg::GearCommand::ConstSharedPtr gear_cmd_ptr_;
   tier4_vehicle_msgs::msg::VehicleEmergencyStamped::ConstSharedPtr emergency_cmd_ptr;
   tier4_control_msgs::msg::GateMode::ConstSharedPtr gate_mode_cmd_ptr;
-
+  //mehce added starts
+  autoware_auto_vehicle_msgs::msg::HandBrakeCommand::ConstSharedPtr hand_brake_cmd_ptr;
+  autoware_auto_vehicle_msgs::msg::HeadlightsCommand::ConstSharedPtr head_lights_cmd_ptr;
+  autoware_auto_vehicle_msgs::msg::RawControlCommand::ConstSharedPtr raw_control_cmd_ptr;
+  //mehce added ends
   bool engage_cmd_{0};
 
   /* Variables */
@@ -365,16 +386,7 @@ private:
   void receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg);
   void sendCanFrame();
 
-  veh_dyn_info_msg vehDynInfoMsg_;
-  veh_sgnl_status_msg vehSgnlStatusMsg_;
-  motion_info_msg motionInfoMsg_;
-  motor_info_msg motorInfoMsg_;
-  error_info_msg errInfoMsg_;
-
-  long_cmd_msg1 longCmdMsg1_;
-  long_cmd_msg2 longCmdMsg2_;
-  veh_sgnl_cmd_msg vehSgnlCmdMsg_;
-  front_wheel_cmd_msg frontWheelCmdMsg_;
-
+  LlcToCompMsg llc_to_comp_msg {};
+  CompToLlcCmd comp_to_llc_cmd {};
 };
 #endif  // LEO_VCU_DRIVER__LEO_VCU_DRIVER_HPP_

@@ -30,7 +30,7 @@ using namespace std::chrono_literals;
 
 LeoVcuDriver::LeoVcuDriver()
 : Node("leo_vcu_driver"),
-  vehicle_info_(vehicle_info_util::VehicleInfoUtil(*this).getVehicleInfo()),
+//  vehicle_info_(vehicle_info_util::VehicleInfoUtil(*this).getVehicleInfo()),
   updater_(this)
 
 
@@ -970,24 +970,24 @@ void LeoVcuDriver::onAutowareState(const autoware_auto_system_msgs::msg::Autowar
 
 void LeoVcuDriver::receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg) {
   msg_recv_can_frame_ = msg;
-  RCLCPP_WARN(this->get_logger(), "I'VE RECEIVED A CAN FRAME WITH ID %d", msg->id);
+//  RCLCPP_WARN(this->get_logger(), "I'VE RECEIVED A CAN FRAME WITH ID %d", msg->id);
   std_msgs::msg::Header header;
   header.frame_id = this->base_frame_id_;
   header.stamp = get_clock()->now();
 
   switch (msg_recv_can_frame_->id) {
     case 1041:
-      std::memcpy(&vehDynInfoMsg_, &msg_recv_can_frame_->data, 8);
-      // linear vehicle velocity and front wheel angel publisher
+      std::memcpy(&llc_to_comp_msg.vehicle_dyn_info_msg, &msg_recv_can_frame_->data, 8);
+      // linear vehicle velocity and front wheel angle publisher
       {
         autoware_auto_vehicle_msgs::msg::VelocityReport msg_velocity_report;
         autoware_auto_vehicle_msgs::msg::SteeringReport msg_steering_report;
 
         msg_velocity_report.set__header(header);
-        msg_velocity_report.set__longitudinal_velocity(static_cast<float>(vehDynInfoMsg_.linear_veh_velocity));
+        msg_velocity_report.set__longitudinal_velocity(static_cast<float>(llc_to_comp_msg.vehicle_dyn_info_msg.linear_veh_velocity));
 
         msg_steering_report.set__stamp(header.stamp);
-        msg_steering_report.set__steering_tire_angle(static_cast<float>(vehDynInfoMsg_.front_wheel_angle));
+        msg_steering_report.set__steering_tire_angle(static_cast<float>(llc_to_comp_msg.vehicle_dyn_info_msg.front_wheel_angle));
 
         vehicle_twist_pub_->publish(msg_velocity_report);
         steering_status_pub_->publish(msg_steering_report);
@@ -996,7 +996,7 @@ void LeoVcuDriver::receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg) {
       break;
 
     case 1042:
-      std::memcpy(&vehSgnlStatusMsg_, &msg_recv_can_frame_->data, 8);
+      std::memcpy(&llc_to_comp_msg.vehicle_sgl_status_msg, &msg_recv_can_frame_->data, 8);
       // fuel, blinker, headlight, wiper, gear, mode, hand_brake and horn publisher
       {
         autoware_auto_vehicle_msgs::msg::HazardLightsReport msg_indicator;
@@ -1004,14 +1004,13 @@ void LeoVcuDriver::receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg) {
         autoware_auto_vehicle_msgs::msg::ControlModeReport msg_control_mode;
 
         msg_indicator.set__stamp(header.stamp);
-        msg_indicator.set__report(static_cast<uint8_t>(vehSgnlStatusMsg_.blinker));
+        msg_indicator.set__report(static_cast<uint8_t>(llc_to_comp_msg.vehicle_sgl_status_msg.blinker));
 
         msg_gear_report.set__stamp(header.stamp);
-        msg_gear_report.set__report(static_cast<uint8_t>(vehSgnlStatusMsg_.gear));
+        msg_gear_report.set__report(static_cast<uint8_t>(llc_to_comp_msg.vehicle_sgl_status_msg.gear));
 
         msg_control_mode.set__stamp(header.stamp);
-        msg_control_mode.set__mode(static_cast<uint8_t>(vehSgnlStatusMsg_.mode));
-        RCLCPP_INFO(this->get_logger(), "1042");
+        msg_control_mode.set__mode(static_cast<uint8_t>(llc_to_comp_msg.vehicle_sgl_status_msg.mode));
         hazard_lights_status_pub_->publish(msg_indicator);
         gear_status_pub_->publish(msg_gear_report);
         control_mode_pub_->publish(msg_control_mode);
@@ -1019,24 +1018,24 @@ void LeoVcuDriver::receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg) {
       }
       break;
     case 1043:
-      std::memcpy(&motionInfoMsg_, &msg_recv_can_frame_->data, 8);
+      std::memcpy(&llc_to_comp_msg.motor_info_msg, &msg_recv_can_frame_->data, 8);
       // intervention, ready, motion_allow, throttle, brake, front_steer
       {
 
       }
       break;
     case 1044:
-      std::memcpy(&motorInfoMsg_, &msg_recv_can_frame_->data, 8);
+      std::memcpy(&llc_to_comp_msg.motor_info_msg, &msg_recv_can_frame_->data, 8);
       // temperature and rpm publisher
       {
 
       }
       break;
     case 1045:
-      std::memcpy(&errInfoMsg_, &msg_recv_can_frame_->data, 8);
+      std::memcpy(&llc_to_comp_msg.err_msg, &msg_recv_can_frame_->data, 8);
       // error info msgs
       {
-
+        //TODO(MehceUnisen): make error check
       }
       break;
     default:
@@ -1056,29 +1055,30 @@ void LeoVcuDriver::sendCanFrame() {
   can_msgs::msg::Frame msg_long_cmd_frame_2;
   can_msgs::msg::Frame msg_veh_signal_cmd_frame;
   can_msgs::msg::Frame msg_front_wheel_cmd_frame;
-  // since the structs are not initalized, the node will die when publishing message to can bus!
-//  longCmdMsg1_.set_long_accel
-//  longCmdMsg1_.set_limit_velocity
-//
-//  longCmdMsg2_.set_gas_pedal_pos
-//  longCmdMsg2_.set_brake_pedal_pos
-//
-//  vehSgnlCmdMsg_.blinker = hazard_lights_cmd_ptr_->command;
-//  vehSgnlCmdMsg_.headlight
-//  vehSgnlCmdMsg_.wiper
-//  vehSgnlCmdMsg_.gear = gear_cmd_ptr_->command;
-//  vehSgnlCmdMsg_.mode = gate_mode_cmd_ptr->data;
-//  vehSgnlCmdMsg_.hand_brake
-//  vehSgnlCmdMsg_.horn
-//  vehSgnlCmdMsg_.reserved
+  // TODO(MehceUnisen):node dies when autoware isn't running, fix that
 
-//    frontWheelCmdMsg_.set_front_wheel_angle =
-//    frontWheelCmdMsg_.set_front_wheel_angle_rate
-//
-//  std::memcpy(&msg_long_cmd_frame_1.data, &longCmdMsg1_, 8);
-//  std::memcpy(&msg_long_cmd_frame_2.data, &longCmdMsg2_, 8);
-//  std::memcpy(&msg_veh_signal_cmd_frame.data, &vehSgnlCmdMsg_, 8);
-//  std::memcpy(&msg_front_wheel_cmd_frame.data, &frontWheelCmdMsg_, 8);
+//  comp_to_llc_cmd.long_msg_v1.set_long_accel = control_cmd_ptr_->longitudinal.acceleration;
+//  comp_to_llc_cmd.long_msg_v1.set_limit_velocity = control_cmd_ptr_->longitudinal.speed;
+
+//  comp_to_llc_cmd.long_msg_v2.set_gas_pedal_pos = raw_control_cmd_ptr->throttle; // TODO(MehceUnisen): check whether you've selected the wrong msg file or wrong variable type
+//  comp_to_llc_cmd.long_msg_v2.set_brake_pedal_pos = raw_control_cmd_ptr->brake;
+
+//  comp_to_llc_cmd.vehicle_signal_cmd.blinker = hazard_lights_cmd_ptr_->command;
+//  comp_to_llc_cmd.vehicle_signal_cmd.headlight = head_lights_cmd_ptr->command;
+//  comp_to_llc_cmd.vehicle_signal_cmd.wiper = 0;
+//  comp_to_llc_cmd.vehicle_signal_cmd.gear = gear_cmd_ptr_->command;
+//  comp_to_llc_cmd.vehicle_signal_cmd.mode = gate_mode_cmd_ptr->data;
+//  comp_to_llc_cmd.vehicle_signal_cmd.hand_brake = hand_brake_cmd_ptr->active; // not sure, check again
+//  comp_to_llc_cmd.vehicle_signal_cmd.takeover_request = 0;
+//  comp_to_llc_cmd.vehicle_signal_cmd.long_mode = 0;
+
+//  comp_to_llc_cmd.front_wheel_cmd_msg.set_front_wheel_angle = control_cmd_ptr_->lateral.steering_tire_angle;
+//  comp_to_llc_cmd.front_wheel_cmd_msg.set_front_wheel_angle_rate = control_cmd_ptr_->lateral.steering_tire_rotation_rate;
+
+//  std::memcpy(&msg_long_cmd_frame_1.data, &comp_to_llc_cmd.long_msg_v1, 8);
+//  std::memcpy(&msg_long_cmd_frame_2.data, &comp_to_llc_cmd.long_msg_v2, 8);
+//  std::memcpy(&msg_veh_signal_cmd_frame.data, &comp_to_llc_cmd.vehicle_signal_cmd, 8);
+//  std::memcpy(&msg_front_wheel_cmd_frame.data, &comp_to_llc_cmd.front_wheel_cmd_msg, 8);
 
   msg_long_cmd_frame_1.set__header(header);
   msg_long_cmd_frame_1.dlc = static_cast<uint8_t>(8);

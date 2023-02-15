@@ -61,7 +61,6 @@ struct CompToLlcData_
   // Default values wiper = 1 (Off), headlight = 1 (Off), handbrake = 0 (not used in LLC)
 };
 
-
 struct StateReport_
 {
   uint8_t fuel;
@@ -171,13 +170,28 @@ struct CompToLlcData
   uint8_t eof_id2;
 };
 
-struct __attribute__((packed)) veh_dyn_info_msg{
-  float linear_veh_velocity;
-  float front_wheel_angle;
+//can msgs
+struct __attribute__((packed)) VehicleErrorsMsg {
+    uint8_t mechanical_errors;
+    uint16_t electrical_errors;
 };
 
+struct __attribute__((packed)) MotorInfoMsg{
+  uint8_t temp;
+  uint16_t rpm;
+  uint8_t k157;
+};
 
-struct __attribute__((packed)) veh_sgnl_status_msg{
+struct __attribute__((packed)) MotionInfoMsg{
+  uint8_t interventions;
+  uint8_t ready;
+  uint8_t motion_allow;
+  uint8_t throttle;
+  uint8_t brake;
+  uint16_t front_steer;
+};
+
+struct __attribute__((packed)) VehicleSignalStatusMsg{
   uint8_t fuel;
   uint8_t blinker;
   uint8_t headlight;
@@ -188,55 +202,54 @@ struct __attribute__((packed)) veh_sgnl_status_msg{
   uint8_t horn;
 };
 
-struct __attribute__((packed)) motion_info_msg{
-  uint8_t intervention;
-  uint8_t ready;
-  uint8_t motion_allow;
-  uint8_t throttle;
-  uint8_t brake;
-  uint16_t front_steer;
+struct __attribute__((packed)) VehicleDynamicsInfoMsg{
+  float linear_veh_velocity;
+  float front_wheel_angle;
 };
 
-struct __attribute__((packed)) motor_info_msg{
-  uint8_t temp;
-  uint16_t rpm;
+//can commands
+
+struct __attribute__((packed)) FrontWheelCommandMsg{
+  float set_front_wheel_angle;
+  float set_front_wheel_angle_rate;
 };
 
-struct __attribute__((packed)) error_info_msg {
-  uint8_t errMsg1;
-  uint8_t errMsg2;
-  uint8_t errMsg3;
-  uint8_t errMsg4;
-  uint8_t errMsg5;
-  uint8_t errMsg6;
-  uint8_t errMsg7;
-  uint8_t errMsg8;
-};
-
-struct __attribute__((packed)) long_cmd_msg1{
-  float set_long_accel;
-  float set_limit_velocity;
-};
-
-struct __attribute__((packed)) long_cmd_msg2{
-  float set_gas_pedal_pos;
-  float set_brake_pedal_pos;
-};
-
-struct __attribute__((packed)) veh_sgnl_cmd_msg{
+struct __attribute__((packed)) VehicleSignalCommandMsg{
   uint8_t blinker;
   uint8_t headlight;
   uint8_t wiper;
   uint8_t gear;
   uint8_t mode;
   uint8_t hand_brake;
-  uint8_t horn;
-  uint8_t reserved;
+  uint8_t takeover_request;
+  uint8_t long_mode;
 };
 
-struct __attribute__((packed)) front_wheel_cmd_msg{
-  float set_front_wheel_angle;
-  float set_front_wheel_angle_rate;
+struct __attribute__((packed)) LongitudinalCommandMsgV2{
+  float set_gas_pedal_pos;
+  float set_brake_pedal_pos;
 };
+
+struct __attribute__((packed)) LongitudinalCommandMsgV1{
+  float set_long_accel;
+  float set_limit_velocity;
+};
+
+struct __attribute__((packed)) LlcToCompMsg {
+    VehicleErrorsMsg err_msg;
+    MotorInfoMsg motor_info_msg;
+    MotionInfoMsg motion_info_msg;
+    VehicleSignalStatusMsg vehicle_sgl_status_msg;
+    VehicleDynamicsInfoMsg vehicle_dyn_info_msg;
+};
+
+struct __attribute__((packed)) CompToLlcCmd {
+    FrontWheelCommandMsg front_wheel_cmd_msg;
+    VehicleSignalCommandMsg vehicle_signal_cmd;
+    LongitudinalCommandMsgV1 long_msg_v1;
+    LongitudinalCommandMsgV2 long_msg_v2;
+};
+
+
 
 #endif //BUILD_VEHICLE_INTERFACE_H
