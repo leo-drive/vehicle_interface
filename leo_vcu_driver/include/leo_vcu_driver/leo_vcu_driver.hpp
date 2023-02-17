@@ -123,6 +123,23 @@ public:
    * Autoware Universe.
    */
   void gate_mode_cmd_callback(const tier4_control_msgs::msg::GateMode::ConstSharedPtr msg);
+   // mehce added starts
+   /**
+   * @brief It is callback function which takes data from "/" topic from Autoware Universe
+   */
+   void hand_brake_cmd_callback(
+     const autoware_auto_vehicle_msgs::msg::HandBrakeCommand::ConstSharedPtr msg);
+  /**
+   * @brief It is callback function which takes data from "/" topic from Autoware Universe
+   */
+   void headlights_cmd_callback(
+     const autoware_auto_vehicle_msgs::msg::HeadlightsCommand::ConstSharedPtr msg);
+   /**
+   * @brief It is callback function which takes data from "/" topic from Autoware Universe
+   */
+   void raw_control_cmd_callback(
+     const autoware_auto_vehicle_msgs::msg::RawControlCommand::ConstSharedPtr msg);
+  // mehce added ends
   /**
    * @brief It sends data from interface to low level controller.
    */
@@ -298,7 +315,12 @@ private:
   rclcpp::Subscription<autoware_auto_system_msgs::msg::HazardStatusStamped>::SharedPtr
     sub_hazard_status_stamped_;
   rclcpp::Subscription<autoware_auto_system_msgs::msg::AutowareState>::ConstSharedPtr autoware_state_sub_;
-
+  // mehce added starts
+  rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::HandBrakeCommand>::SharedPtr hand_brake_sub_;
+  rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::HeadlightsCommand>::SharedPtr headlights_sub_;
+  rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::RawControlCommand>::SharedPtr
+    raw_control_cmd_sub_;
+  // mehce added ends
 
   /* publishers */
   // To Autoware
@@ -315,6 +337,10 @@ private:
   rclcpp::Publisher<tier4_vehicle_msgs::msg::SteeringWheelStatusStamped>::SharedPtr
     steering_wheel_status_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr llc_error_pub_;
+  // mehce added starts
+  rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::HandBrakeReport>::SharedPtr hand_brake_pub_;
+  rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::HeadlightsReport>::SharedPtr headlights_pub_;
+  // mehce added ends
 
   // Timer
   rclcpp::TimerBase::SharedPtr tim_data_sender_;

@@ -92,7 +92,15 @@ LeoVcuDriver::LeoVcuDriver()
       std::bind(&LeoVcuDriver::onHazardStatusStamped, this, _1));
   autoware_state_sub_ = create_subscription<autoware_auto_system_msgs::msg::AutowareState>(
     "/autoware/state", rclcpp::QoS(1), std::bind(&LeoVcuDriver::onAutowareState, this, _1));
-
+  hand_brake_sub_ = create_subscription<autoware_auto_vehicle_msgs::msg::HandBrakeCommand>(
+          "/yatopicyok", rclcpp::QoS{1},
+          std::bind(&LeoVcuDriver::hand_brake_cmd_callback, this, _1));
+  headlights_sub_ = create_subscription<autoware_auto_vehicle_msgs::msg::HeadlightsCommand>(
+          "/neolacakhalimiz", rclcpp::QoS{1},
+          std::bind(&LeoVcuDriver::headlights_cmd_callback, this, _1));
+  raw_control_cmd_sub_ = create_subscription<autoware_auto_vehicle_msgs::msg::RawControlCommand>(
+          "/kirlisepetimnoktacom", rclcpp::QoS{1},
+          std::bind(&LeoVcuDriver::raw_control_cmd_callback, this, _1));
   /* publisher */
 
   // To Autoware
@@ -113,7 +121,10 @@ LeoVcuDriver::LeoVcuDriver()
     create_publisher<tier4_vehicle_msgs::msg::SteeringWheelStatusStamped>(
       "/vehicle/status/steering_wheel_status", 1);
   llc_error_pub_ = create_publisher<std_msgs::msg::String>("/interface/status/llc_status", 1);
-
+  hand_brake_pub_ = create_publisher<autoware_auto_vehicle_msgs::msg::HandBrakeReport>(
+          "/dur_bulcam1", rclcpp::QoS{1});
+  headlights_pub_ = create_publisher<autoware_auto_vehicle_msgs::msg::HeadlightsReport>(
+          "/durbunudabulcam", rclcpp::QoS{1});
   // System error diagnostic
   updater_.setHardwareID("vehicle_error_monitor");
   updater_.add("pds_system_error", this, &LeoVcuDriver::checkPDSSystemError);
@@ -208,6 +219,24 @@ void LeoVcuDriver::gate_mode_cmd_callback(
   const tier4_control_msgs::msg::GateMode::ConstSharedPtr msg)
 {
   gate_mode_cmd_ptr = msg;  // AUTO = 0, EXTERNAL = 1
+}
+
+void LeoVcuDriver::hand_brake_cmd_callback(
+        const autoware_auto_vehicle_msgs::msg::HandBrakeCommand::ConstSharedPtr msg)
+{
+    hand_brake_cmd_ptr = msg;
+}
+
+void LeoVcuDriver::headlights_cmd_callback(
+        const autoware_auto_vehicle_msgs::msg::HeadlightsCommand::ConstSharedPtr  msg)
+{
+    head_lights_cmd_ptr = msg;
+}
+
+void LeoVcuDriver::raw_control_cmd_callback(
+        const autoware_auto_vehicle_msgs::msg::RawControlCommand::ConstSharedPtr msg)
+{
+    raw_control_cmd_ptr = msg;
 }
 
 void LeoVcuDriver::serial_receive_callback(const char * data, unsigned int len)
@@ -1036,6 +1065,7 @@ void LeoVcuDriver::receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg) {
       // error info msgs
       {
         //TODO(MehceUnisen): make error check
+
       }
       break;
     default:
@@ -1055,30 +1085,29 @@ void LeoVcuDriver::sendCanFrame() {
   can_msgs::msg::Frame msg_long_cmd_frame_2;
   can_msgs::msg::Frame msg_veh_signal_cmd_frame;
   can_msgs::msg::Frame msg_front_wheel_cmd_frame;
-  // TODO(MehceUnisen):node dies when autoware isn't running, fix that
 
-//  comp_to_llc_cmd.long_msg_v1.set_long_accel = control_cmd_ptr_->longitudinal.acceleration;
-//  comp_to_llc_cmd.long_msg_v1.set_limit_velocity = control_cmd_ptr_->longitudinal.speed;
+  comp_to_llc_cmd.long_msg_v1.set_long_accel = control_cmd_ptr_->longitudinal.acceleration;
+  comp_to_llc_cmd.long_msg_v1.set_limit_velocity = control_cmd_ptr_->longitudinal.speed;
 
-//  comp_to_llc_cmd.long_msg_v2.set_gas_pedal_pos = raw_control_cmd_ptr->throttle; // TODO(MehceUnisen): check whether you've selected the wrong msg file or wrong variable type
-//  comp_to_llc_cmd.long_msg_v2.set_brake_pedal_pos = raw_control_cmd_ptr->brake;
+  comp_to_llc_cmd.long_msg_v2.set_gas_pedal_pos = static_cast<float>(raw_control_cmd_ptr->throttle) / 100;
+  comp_to_llc_cmd.long_msg_v2.set_brake_pedal_pos = static_cast<float>(raw_control_cmd_ptr->brake) / 100;
 
-//  comp_to_llc_cmd.vehicle_signal_cmd.blinker = hazard_lights_cmd_ptr_->command;
-//  comp_to_llc_cmd.vehicle_signal_cmd.headlight = head_lights_cmd_ptr->command;
-//  comp_to_llc_cmd.vehicle_signal_cmd.wiper = 0;
-//  comp_to_llc_cmd.vehicle_signal_cmd.gear = gear_cmd_ptr_->command;
-//  comp_to_llc_cmd.vehicle_signal_cmd.mode = gate_mode_cmd_ptr->data;
-//  comp_to_llc_cmd.vehicle_signal_cmd.hand_brake = hand_brake_cmd_ptr->active; // not sure, check again
-//  comp_to_llc_cmd.vehicle_signal_cmd.takeover_request = 0;
-//  comp_to_llc_cmd.vehicle_signal_cmd.long_mode = 0;
+  comp_to_llc_cmd.vehicle_signal_cmd.blinker = hazard_lights_cmd_ptr_->command;
+  comp_to_llc_cmd.vehicle_signal_cmd.headlight = head_lights_cmd_ptr->command;
+  comp_to_llc_cmd.vehicle_signal_cmd.wiper = 0;
+  comp_to_llc_cmd.vehicle_signal_cmd.gear = gear_cmd_ptr_->command;
+  comp_to_llc_cmd.vehicle_signal_cmd.mode = gate_mode_cmd_ptr->data;
+  comp_to_llc_cmd.vehicle_signal_cmd.hand_brake = hand_brake_cmd_ptr->active; // not sure, check again
+  comp_to_llc_cmd.vehicle_signal_cmd.takeover_request = 0;
+  comp_to_llc_cmd.vehicle_signal_cmd.long_mode = 0;
 
-//  comp_to_llc_cmd.front_wheel_cmd_msg.set_front_wheel_angle = control_cmd_ptr_->lateral.steering_tire_angle;
-//  comp_to_llc_cmd.front_wheel_cmd_msg.set_front_wheel_angle_rate = control_cmd_ptr_->lateral.steering_tire_rotation_rate;
+  comp_to_llc_cmd.front_wheel_cmd_msg.set_front_wheel_angle = control_cmd_ptr_->lateral.steering_tire_angle;
+  comp_to_llc_cmd.front_wheel_cmd_msg.set_front_wheel_angle_rate = control_cmd_ptr_->lateral.steering_tire_rotation_rate;
 
-//  std::memcpy(&msg_long_cmd_frame_1.data, &comp_to_llc_cmd.long_msg_v1, 8);
-//  std::memcpy(&msg_long_cmd_frame_2.data, &comp_to_llc_cmd.long_msg_v2, 8);
-//  std::memcpy(&msg_veh_signal_cmd_frame.data, &comp_to_llc_cmd.vehicle_signal_cmd, 8);
-//  std::memcpy(&msg_front_wheel_cmd_frame.data, &comp_to_llc_cmd.front_wheel_cmd_msg, 8);
+  std::memcpy(&msg_long_cmd_frame_1.data, &comp_to_llc_cmd.long_msg_v1, 8);
+  std::memcpy(&msg_long_cmd_frame_2.data, &comp_to_llc_cmd.long_msg_v2, 8);
+  std::memcpy(&msg_veh_signal_cmd_frame.data, &comp_to_llc_cmd.vehicle_signal_cmd, 8);
+  std::memcpy(&msg_front_wheel_cmd_frame.data, &comp_to_llc_cmd.front_wheel_cmd_msg, 8);
 
   msg_long_cmd_frame_1.set__header(header);
   msg_long_cmd_frame_1.dlc = static_cast<uint8_t>(8);
