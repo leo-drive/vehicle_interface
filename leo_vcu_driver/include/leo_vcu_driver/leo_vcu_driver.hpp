@@ -47,13 +47,15 @@
 
 #include <autoware_auto_vehicle_msgs/msg/velocity_report.hpp>
 //mehce added starts
-#include <autoware_auto_vehicle_msgs/msg/hand_brake_command.hpp> //TODO(MehceUnisen): add callbacks new added msgs
+#include <autoware_auto_vehicle_msgs/msg/hand_brake_command.hpp>
 #include <autoware_auto_vehicle_msgs/msg/hand_brake_report.hpp>
 
 #include <autoware_auto_vehicle_msgs/msg/headlights_command.hpp>
 #include <autoware_auto_vehicle_msgs/msg/headlights_report.hpp>
 
 #include <autoware_auto_vehicle_msgs/msg/raw_control_command.hpp>
+
+//#include <pacmod3_msgs/pacmod3_msgs/msg/accel_aux_rpt.hpp>
 //mehce aded ends
 #include <diagnostic_msgs/msg/diagnostic_status.hpp>
 #include <std_msgs/msg/string.hpp>
@@ -78,7 +80,7 @@ class LeoVcuDriver : public rclcpp::Node
 {
 public:
   LeoVcuDriver();
-  ~LeoVcuDriver() override { ; }
+  ~LeoVcuDriver() override { /*;serial->close();*/ }
 
   /**
    * @brief It checks the autoware data is ready or not.
@@ -399,10 +401,6 @@ private:
     0.55710949337717441,   0.61005324248865378,   0.63768293444784307,   0.64};
 
   //can testing codes
-  struct can_frame can_frame_;
-
-  std::string recv_frame_topic_;
-  std::string send_frame_topic;
 
   can_msgs::msg::Frame::SharedPtr msg_recv_can_frame_;
   can_msgs::msg::Frame msg_send_can_frame_;
@@ -411,6 +409,8 @@ private:
 
   void receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg);
   void sendCanFrame();
+  void mechanical_error_check();
+  void electrical_error_check();
 
   LlcToCompMsg llc_to_comp_msg {};
   CompToLlcCmd comp_to_llc_cmd {};
