@@ -30,7 +30,7 @@ using namespace std::chrono_literals;
 
 LeoVcuDriver::LeoVcuDriver()
 : Node("leo_vcu_driver"),
-//  vehicle_info_(vehicle_info_util::VehicleInfoUtil(*this).getVehicleInfo()),
+  vehicle_info_(vehicle_info_util::VehicleInfoUtil(*this).getVehicleInfo()),
   updater_(this)
 
 
@@ -1150,6 +1150,7 @@ void LeoVcuDriver::mechanical_error_check() {
             }
         }
     }
+    llc_error_pub_->publish(error_str);
 }
 
 void LeoVcuDriver::electrical_error_check() {
@@ -1196,4 +1197,5 @@ void LeoVcuDriver::electrical_error_check() {
             }
         }
     }
+    llc_error_pub_->publish(error_str);
 }
