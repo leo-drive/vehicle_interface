@@ -148,13 +148,11 @@ LeoVcuDriver::LeoVcuDriver()
 //  serial = new CallbackAsyncSerial;
   current_emergency_acceleration = -std::fabs(soft_stop_acceleration);
 
-  recv_frame_topic_ = declare_parameter("recv_frame_topic", "/from_can_bus");
   sub_recv_frame_ = this->create_subscription<can_msgs::msg::Frame>(
-          recv_frame_topic_, rclcpp::QoS{1}, std::bind(&LeoVcuDriver::receivedFrameCallback, this, _1));
+          "/from_can_bus", rclcpp::QoS{1}, std::bind(&LeoVcuDriver::receivedFrameCallback, this, _1));
 
-  send_frame_topic = declare_parameter("send_frame_topic", "/to_can_bus");
   pub_send_frame_ = this->create_publisher<can_msgs::msg::Frame>(
-          send_frame_topic, rclcpp::QoS{10});
+          "/to_can_bus", rclcpp::QoS{10});
 
 }
 void LeoVcuDriver::onHazardStatusStamped(
@@ -1020,7 +1018,6 @@ void LeoVcuDriver::receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg) {
 
         vehicle_twist_pub_->publish(msg_velocity_report);
         steering_status_pub_->publish(msg_steering_report);
-        RCLCPP_INFO(this->get_logger(), "1041");
       }
       break;
 
@@ -1040,6 +1037,7 @@ void LeoVcuDriver::receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg) {
 
         msg_control_mode.set__stamp(header.stamp);
         msg_control_mode.set__mode(static_cast<uint8_t>(llc_to_comp_msg.vehicle_sgl_status_msg.mode));
+
         hazard_lights_status_pub_->publish(msg_indicator);
         gear_status_pub_->publish(msg_gear_report);
         control_mode_pub_->publish(msg_control_mode);
@@ -1047,7 +1045,7 @@ void LeoVcuDriver::receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg) {
       }
       break;
     case 1043:
-      std::memcpy(&llc_to_comp_msg.motor_info_msg, &msg_recv_can_frame_->data, 8);
+      std::memcpy(&llc_to_comp_msg.motion_info_msg, &msg_recv_can_frame_->data, 8);
       // intervention, ready, motion_allow, throttle, brake, front_steer
       {
 
@@ -1064,8 +1062,8 @@ void LeoVcuDriver::receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg) {
       std::memcpy(&llc_to_comp_msg.err_msg, &msg_recv_can_frame_->data, 8);
       // error info msgs
       {
-        //TODO(MehceUnisen): make error check
-
+          mechanical_error_check();
+          electrical_error_check();
       }
       break;
     default:
@@ -1089,15 +1087,19 @@ void LeoVcuDriver::sendCanFrame() {
   comp_to_llc_cmd.long_msg_v1.set_long_accel = control_cmd_ptr_->longitudinal.acceleration;
   comp_to_llc_cmd.long_msg_v1.set_limit_velocity = control_cmd_ptr_->longitudinal.speed;
 
-  comp_to_llc_cmd.long_msg_v2.set_gas_pedal_pos = static_cast<float>(raw_control_cmd_ptr->throttle) / 100;
-  comp_to_llc_cmd.long_msg_v2.set_brake_pedal_pos = static_cast<float>(raw_control_cmd_ptr->brake) / 100;
+  comp_to_llc_cmd.long_msg_v2.set_gas_pedal_pos = 0;
+//  static_cast<float>(raw_control_cmd_ptr->throttle) / 100;
+  comp_to_llc_cmd.long_msg_v2.set_brake_pedal_pos = 0;
+//  static_cast<float>(raw_control_cmd_ptr->brake) / 100;
 
   comp_to_llc_cmd.vehicle_signal_cmd.blinker = hazard_lights_cmd_ptr_->command;
-  comp_to_llc_cmd.vehicle_signal_cmd.headlight = head_lights_cmd_ptr->command;
+  comp_to_llc_cmd.vehicle_signal_cmd.headlight = 0;
+//  head_lights_cmd_ptr->command;
   comp_to_llc_cmd.vehicle_signal_cmd.wiper = 0;
   comp_to_llc_cmd.vehicle_signal_cmd.gear = gear_cmd_ptr_->command;
   comp_to_llc_cmd.vehicle_signal_cmd.mode = gate_mode_cmd_ptr->data;
-  comp_to_llc_cmd.vehicle_signal_cmd.hand_brake = hand_brake_cmd_ptr->active; // not sure, check again
+  comp_to_llc_cmd.vehicle_signal_cmd.hand_brake =  0 ;
+//  hand_brake_cmd_ptr->active; // not sure, check again
   comp_to_llc_cmd.vehicle_signal_cmd.takeover_request = 0;
   comp_to_llc_cmd.vehicle_signal_cmd.long_mode = 0;
 
@@ -1129,4 +1131,69 @@ void LeoVcuDriver::sendCanFrame() {
   pub_send_frame_->publish(msg_long_cmd_frame_2);
   pub_send_frame_->publish(msg_veh_signal_cmd_frame);
   pub_send_frame_->publish(msg_front_wheel_cmd_frame);
+}
+
+void LeoVcuDriver::mechanical_error_check() {
+    error_str.data = std::bitset<8>(llc_to_comp_msg.err_msg.mechanical_errors).to_string();
+    for (size_t i = 0; i < error_str.data.size(); i++) {
+        if (error_str.data.at(i) == '1') {
+            switch (i) {
+                case 6:
+                    RCLCPP_ERROR(this->get_logger(), "isMotorRunning Error.");
+                    break;
+                case 7:
+                    RCLCPP_ERROR(this->get_logger(), "K175 error.");
+                    break;
+                default:
+                    RCLCPP_ERROR(this->get_logger(), "Invalid mehcanical error message.");
+                    break;
+            }
+        }
+    }
+}
+
+void LeoVcuDriver::electrical_error_check() {
+    error_str.data = std::bitset<16>(llc_to_comp_msg.err_msg.electrical_errors).to_string();
+    for (size_t i = 0; i < error_str.data.size(); i++) {
+        if (error_str.data.at(i) == '1') {
+            switch (i) {
+                case 5:
+                    RCLCPP_ERROR(this->get_logger(), "PDS_HearBeatError");
+                    break;
+                case 6:
+                    RCLCPP_ERROR(this->get_logger(), "PDS_BusError");
+                    break;
+                case 7:
+                    RCLCPP_ERROR(this->get_logger(), "By_WirePowerError");
+                    break;
+                case 8:
+                    RCLCPP_ERROR(this->get_logger(), "EPASPowerError");
+                    break;
+                case 9:
+                    RCLCPP_ERROR(this->get_logger(), "BrakePowerError");
+                    break;
+                case 10:
+                    RCLCPP_ERROR(this->get_logger(), "Throttle_ECU_HeartBeatError");
+                    break;
+                case 11:
+                    RCLCPP_ERROR(this->get_logger(), "G29_HeartBeatEror");
+                    break;
+                case 12:
+                    RCLCPP_ERROR(this->get_logger(), "EPAS_SystemError");
+                    break;
+                case 13:
+                    RCLCPP_ERROR(this->get_logger(), "Brake_SystemError");
+                    break;
+                case 14:
+                    RCLCPP_ERROR(this->get_logger(), "Brake_HeartBeatError");
+                    break;
+                case 15:
+                    RCLCPP_ERROR(this->get_logger(), "PC_HeartBeatError");
+                    break;
+                default:
+                    RCLCPP_ERROR(this->get_logger(), "Invalid error message.");
+                    break;
+            }
+        }
+    }
 }
