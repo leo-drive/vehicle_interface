@@ -1074,63 +1074,60 @@ void LeoVcuDriver::receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg) {
 
 void LeoVcuDriver::sendCanFrame() {
   //burda doldurulan commandleri publish edeceksin can topic'ine
+  if(autoware_data_ready()) {
+      std_msgs::msg::Header header;
+      header.frame_id = this->base_frame_id_;
+      header.stamp = get_clock()->now();
 
-  std_msgs::msg::Header header;
-  header.frame_id = this->base_frame_id_;
-  header.stamp = get_clock()->now();
+      can_msgs::msg::Frame msg_long_cmd_frame_1;
+      can_msgs::msg::Frame msg_long_cmd_frame_2;
+      can_msgs::msg::Frame msg_veh_signal_cmd_frame;
+      can_msgs::msg::Frame msg_front_wheel_cmd_frame;
 
-  can_msgs::msg::Frame msg_long_cmd_frame_1;
-  can_msgs::msg::Frame msg_long_cmd_frame_2;
-  can_msgs::msg::Frame msg_veh_signal_cmd_frame;
-  can_msgs::msg::Frame msg_front_wheel_cmd_frame;
+      comp_to_llc_cmd.long_msg_v1.set_long_accel = control_cmd_ptr_->longitudinal.acceleration;
+      comp_to_llc_cmd.long_msg_v1.set_limit_velocity = control_cmd_ptr_->longitudinal.speed;
 
-  comp_to_llc_cmd.long_msg_v1.set_long_accel = control_cmd_ptr_->longitudinal.acceleration;
-  comp_to_llc_cmd.long_msg_v1.set_limit_velocity = control_cmd_ptr_->longitudinal.speed;
+      comp_to_llc_cmd.long_msg_v2.set_gas_pedal_pos = static_cast<float>(raw_control_cmd_ptr->throttle) / 100;
+      comp_to_llc_cmd.long_msg_v2.set_brake_pedal_pos = static_cast<float>(raw_control_cmd_ptr->brake) / 100;
 
-  comp_to_llc_cmd.long_msg_v2.set_gas_pedal_pos = 0;
-//  static_cast<float>(raw_control_cmd_ptr->throttle) / 100;
-  comp_to_llc_cmd.long_msg_v2.set_brake_pedal_pos = 0;
-//  static_cast<float>(raw_control_cmd_ptr->brake) / 100;
+      comp_to_llc_cmd.vehicle_signal_cmd.blinker = hazard_lights_cmd_ptr_->command;
+      comp_to_llc_cmd.vehicle_signal_cmd.headlight = head_lights_cmd_ptr->command;
+      comp_to_llc_cmd.vehicle_signal_cmd.wiper = 0;
+      comp_to_llc_cmd.vehicle_signal_cmd.gear = gear_cmd_ptr_->command;
+      comp_to_llc_cmd.vehicle_signal_cmd.mode = gate_mode_cmd_ptr->data;
+      comp_to_llc_cmd.vehicle_signal_cmd.hand_brake = hand_brake_cmd_ptr->active; // not sure, check again
+      comp_to_llc_cmd.vehicle_signal_cmd.takeover_request = 0;
+      comp_to_llc_cmd.vehicle_signal_cmd.long_mode = 0;
 
-  comp_to_llc_cmd.vehicle_signal_cmd.blinker = hazard_lights_cmd_ptr_->command;
-  comp_to_llc_cmd.vehicle_signal_cmd.headlight = 0;
-//  head_lights_cmd_ptr->command;
-  comp_to_llc_cmd.vehicle_signal_cmd.wiper = 0;
-  comp_to_llc_cmd.vehicle_signal_cmd.gear = gear_cmd_ptr_->command;
-  comp_to_llc_cmd.vehicle_signal_cmd.mode = gate_mode_cmd_ptr->data;
-  comp_to_llc_cmd.vehicle_signal_cmd.hand_brake =  0 ;
-//  hand_brake_cmd_ptr->active; // not sure, check again
-  comp_to_llc_cmd.vehicle_signal_cmd.takeover_request = 0;
-  comp_to_llc_cmd.vehicle_signal_cmd.long_mode = 0;
+      comp_to_llc_cmd.front_wheel_cmd_msg.set_front_wheel_angle = control_cmd_ptr_->lateral.steering_tire_angle;
+      comp_to_llc_cmd.front_wheel_cmd_msg.set_front_wheel_angle_rate = control_cmd_ptr_->lateral.steering_tire_rotation_rate;
 
-  comp_to_llc_cmd.front_wheel_cmd_msg.set_front_wheel_angle = control_cmd_ptr_->lateral.steering_tire_angle;
-  comp_to_llc_cmd.front_wheel_cmd_msg.set_front_wheel_angle_rate = control_cmd_ptr_->lateral.steering_tire_rotation_rate;
+      std::memcpy(&msg_long_cmd_frame_1.data, &comp_to_llc_cmd.long_msg_v1, 8);
+      std::memcpy(&msg_long_cmd_frame_2.data, &comp_to_llc_cmd.long_msg_v2, 8);
+      std::memcpy(&msg_veh_signal_cmd_frame.data, &comp_to_llc_cmd.vehicle_signal_cmd, 8);
+      std::memcpy(&msg_front_wheel_cmd_frame.data, &comp_to_llc_cmd.front_wheel_cmd_msg, 8);
 
-  std::memcpy(&msg_long_cmd_frame_1.data, &comp_to_llc_cmd.long_msg_v1, 8);
-  std::memcpy(&msg_long_cmd_frame_2.data, &comp_to_llc_cmd.long_msg_v2, 8);
-  std::memcpy(&msg_veh_signal_cmd_frame.data, &comp_to_llc_cmd.vehicle_signal_cmd, 8);
-  std::memcpy(&msg_front_wheel_cmd_frame.data, &comp_to_llc_cmd.front_wheel_cmd_msg, 8);
+      msg_long_cmd_frame_1.set__header(header);
+      msg_long_cmd_frame_1.dlc = static_cast<uint8_t>(8);
+      msg_long_cmd_frame_1.id = static_cast<uint32_t>(1024);
 
-  msg_long_cmd_frame_1.set__header(header);
-  msg_long_cmd_frame_1.dlc = static_cast<uint8_t>(8);
-  msg_long_cmd_frame_1.id = static_cast<uint32_t>(1024);
+      msg_long_cmd_frame_2.set__header(header);
+      msg_long_cmd_frame_2.set__dlc(static_cast<uint8_t>(8));
+      msg_long_cmd_frame_2.set__id(static_cast<uint32_t>(1025));
 
-  msg_long_cmd_frame_2.set__header(header);
-  msg_long_cmd_frame_2.set__dlc(static_cast<uint8_t>(8));
-  msg_long_cmd_frame_2.set__id(static_cast<uint32_t>(1025));
+      msg_veh_signal_cmd_frame.set__header(header);
+      msg_veh_signal_cmd_frame.set__dlc(static_cast<uint8_t>(8));
+      msg_veh_signal_cmd_frame.set__id(static_cast<uint32_t>(1026));
 
-  msg_veh_signal_cmd_frame.set__header(header);
-  msg_veh_signal_cmd_frame.set__dlc(static_cast<uint8_t>(8));
-  msg_veh_signal_cmd_frame.set__id(static_cast<uint32_t>(1026));
+      msg_front_wheel_cmd_frame.set__header(header);
+      msg_front_wheel_cmd_frame.set__dlc(static_cast<uint8_t>(8));
+      msg_front_wheel_cmd_frame.set__id(static_cast<uint32_t>(1027));
 
-  msg_front_wheel_cmd_frame.set__header(header);
-  msg_front_wheel_cmd_frame.set__dlc(static_cast<uint8_t>(8));
-  msg_front_wheel_cmd_frame.set__id(static_cast<uint32_t>(1027));
-
-  pub_send_frame_->publish(msg_long_cmd_frame_1);
-  pub_send_frame_->publish(msg_long_cmd_frame_2);
-  pub_send_frame_->publish(msg_veh_signal_cmd_frame);
-  pub_send_frame_->publish(msg_front_wheel_cmd_frame);
+      pub_send_frame_->publish(msg_long_cmd_frame_1);
+      pub_send_frame_->publish(msg_long_cmd_frame_2);
+      pub_send_frame_->publish(msg_veh_signal_cmd_frame);
+      pub_send_frame_->publish(msg_front_wheel_cmd_frame);
+  }
 }
 
 void LeoVcuDriver::mechanical_error_check() {
