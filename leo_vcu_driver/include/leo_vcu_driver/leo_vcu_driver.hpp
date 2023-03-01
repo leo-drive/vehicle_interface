@@ -192,7 +192,7 @@ public:
    * @brief It is the meta converter function that takes all data from LLC and convert them to
    * Autoware messages which are defined as global variable.
    */
-  void llc_to_autoware_msg_adapter(std::experimental::optional<LlcToCompData> & received_data);
+  void llc_to_autoware_msg_adapter();
   /**
    * @brief It is the meta converter function that takes all data from Autoware and convert them to
    * LLC Data Structure which are defined as global variable.
@@ -209,10 +209,6 @@ public:
   void onAutowareState(const autoware_auto_system_msgs::msg::AutowareState::SharedPtr message);
 
 private:
-  std::experimental::optional<LlcToCompData> find_llc_to_comp_msg(
-    const char * data, unsigned int len);
-  static std::vector<char> pack_serial_data(const CompToLlcData & data);
-
   std::vector<uint8_t> receive_buffer_;
 
   /**

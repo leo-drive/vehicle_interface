@@ -204,7 +204,7 @@ struct __attribute__((packed)) VehicleSignalStatusMsg{
 
 struct __attribute__((packed)) VehicleDynamicsInfoMsg{
   float linear_veh_velocity;
-  float front_wheel_angle;
+  float steering_wheel_angle;
 };
 
 //can commands
