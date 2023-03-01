@@ -32,9 +32,6 @@ LeoVcuDriver::LeoVcuDriver()
 : Node("leo_vcu_driver"),
   vehicle_info_(vehicle_info_util::VehicleInfoUtil(*this).getVehicleInfo()),
   updater_(this)
-
-
-
 {
   /// Get Params Here!
   base_frame_id_ = declare_parameter("base_frame_id", "base_link");
@@ -92,7 +89,8 @@ LeoVcuDriver::LeoVcuDriver()
       std::bind(&LeoVcuDriver::onHazardStatusStamped, this, _1));
   autoware_state_sub_ = create_subscription<autoware_auto_system_msgs::msg::AutowareState>(
     "/autoware/state", rclcpp::QoS(1), std::bind(&LeoVcuDriver::onAutowareState, this, _1));
-  hand_brake_sub_ = create_subscription<autoware_auto_vehicle_msgs::msg::HandBrakeCommand>(
+
+  /* hand_brake_sub_ = create_subscription<autoware_auto_vehicle_msgs::msg::HandBrakeCommand>(
           "/yatopicyok", rclcpp::QoS{1},
           std::bind(&LeoVcuDriver::hand_brake_cmd_callback, this, _1));
   headlights_sub_ = create_subscription<autoware_auto_vehicle_msgs::msg::HeadlightsCommand>(
@@ -100,7 +98,7 @@ LeoVcuDriver::LeoVcuDriver()
           std::bind(&LeoVcuDriver::headlights_cmd_callback, this, _1));
   raw_control_cmd_sub_ = create_subscription<autoware_auto_vehicle_msgs::msg::RawControlCommand>(
           "/kirlisepetimnoktacom", rclcpp::QoS{1},
-          std::bind(&LeoVcuDriver::raw_control_cmd_callback, this, _1));
+          std::bind(&LeoVcuDriver::raw_control_cmd_callback, this, _1)); */
   /* publisher */
 
   // To Autoware
@@ -600,162 +598,7 @@ float LeoVcuDriver::steering_wheel_to_steering_tire_angle(
 
 void LeoVcuDriver::llc_publisher()
 {
-
   sendCanFrame();
-//  bool emergency_send{false};
-//
-//  // TODO(brkay54): Check the jerk data is enabled?
-//  const rclcpp::Time current_time = get_clock()->now();
-//  if (!serial_ready) {
-//    // If serial not open
-//    error_str.data = "1000000000000000";
-//  }
-//  llc_error_pub_->publish(error_str);
-//
-//  // control serial is open or not, if not open it.
-//  if (!serial->isOpen()) {
-//    try {
-//      LeoVcuDriver::serial->open(serial_name_, 115200);
-//      serial->setCallback(bind(&LeoVcuDriver::serial_receive_callback, this, _1, _2));
-//    } catch (boost::system::system_error & e) {
-//      RCLCPP_WARN(this->get_logger(), "%s", e.what());
-//      serial_ready = false;
-//      return;
-//    }
-//  } else {
-//    serial_ready = true;
-//  }
-//
-//  if (serial->errorStatus() && serial->isOpen()) {
-//    delete serial;
-//    serial_ready = false;
-//    serial = new CallbackAsyncSerial;
-//
-//    return;
-//  }
-//
-//  // check the autoware data is ready
-//
-//  if (!autoware_data_ready()) {
-//    RCLCPP_WARN_ONCE(get_logger(), "Data from Autoware is not ready!");
-//    CompToLlcData serial_dt(send_data.counter_, 0.0, 0.0, 0.0, 1, 1, 1, 1, 2, 0, 0, 0);
-//
-//    const auto serialData = pack_serial_data(serial_dt);
-//    serial->write(serialData);
-//    send_data.counter_++;
-//    return;
-//  }
-//
-//  autoware_to_llc_msg_adapter();
-//
-//  /* check emergency and timeout */
-//
-//  if (emergency_cmd_ptr->emergency || is_emergency_) {
-//    if (enable_emergency) {
-//      emergency_send = true;
-//    }
-//  }
-//
-//  const double control_cmd_delta_time_ms =
-//    (current_time - control_command_received_time_).seconds() * 1000.0;
-//  bool timeouted = false;
-//  const double t_out = command_timeout_ms_;
-//  if (t_out >= 0 && control_cmd_delta_time_ms > t_out) {
-//    timeouted = true;
-//  }
-//
-//  if (timeouted) {
-//    RCLCPP_ERROR(
-//      get_logger(), "Emergency Stopping, controller output is timeouted = %f ms", control_cmd_delta_time_ms);
-//    if (enable_cmd_timeout_emergency) {
-//      emergency_send = true;
-//    }
-//  }
-//
-//  if (take_over_requested_) {
-//    // describe later the take over request behaviour
-//    RCLCPP_ERROR(get_logger(), "Takeover requested.");
-//    send_data.takeover_request = true;
-//  }
-//
-//  if (emergency_send) {
-//    send_data.takeover_request = true;
-//    RCLCPP_ERROR(get_logger(), "~EMERGENCY~\n");
-//    RCLCPP_ERROR(get_logger(), "Single Point Faults: Emergency hold: %d\n", hazard_status_stamped_->status.emergency_holding);
-//    for (const auto & diag : hazard_status_stamped_->status.diag_single_point_fault) {
-//      RCLCPP_ERROR(
-//        get_logger(),
-//        "level: %hhu\n"
-//        "name: %s\n"
-//        "hardware_id: %s\n"
-//        "message: %s",
-//        diag.level, diag.name.c_str(), diag.hardware_id.c_str(), diag.message.c_str());
-//    }
-//    RCLCPP_ERROR(get_logger(), "Latent Faults: Emergency hold: %d\n", hazard_status_stamped_->status.emergency_holding);
-//    for (const auto & diag : hazard_status_stamped_->status.diag_latent_fault) {
-//      RCLCPP_ERROR(
-//        get_logger(),
-//        "level: %hhu\n"
-//        "name: %s\n"
-//        "hardware_id: %s\n"
-//        "message: %s",
-//        diag.level, diag.name.c_str(), diag.hardware_id.c_str(), diag.message.c_str());
-//    }
-//    if (!prev_emergency) {
-//      current_emergency_acceleration = -std::fabs(soft_stop_acceleration);
-//      prev_emergency = true;
-//    } else {
-//      current_emergency_acceleration +=
-//        (1 / loop_rate_) * (-std::fabs(add_emergency_acceleration_per_second));
-//    }
-//    send_data.set_long_accel_mps2_ = -std::fabs(std::max(
-//      -std::fabs(current_emergency_acceleration), -std::fabs(emergency_stop_acceleration)));
-//    RCLCPP_ERROR(
-//      get_logger(),
-//      "Emergency Stopping, emergency = %d, acceleration = %f, max_acc = %f, soft_acceleration = "
-//      "%f, acceleration per second = %f\n",
-//      emergency_cmd_ptr->emergency, send_data.set_long_accel_mps2_, emergency_stop_acceleration,
-//      soft_stop_acceleration, add_emergency_acceleration_per_second);
-//  } else {
-//    prev_emergency = false;
-//    current_emergency_acceleration = -std::fabs(soft_stop_acceleration);
-//    send_data.takeover_request = false;
-//  }
-//
-//  /* check the steering wheel angle and steering wheel angle rate limits */
-//
-//  if (
-//    send_data.set_front_wheel_angle_rad_ < min_steering_wheel_angle ||
-//    send_data.set_front_wheel_angle_rad_ > max_steering_wheel_angle) {
-//    send_data.set_front_wheel_angle_rad_ = std::min(
-//      max_steering_wheel_angle,
-//      std::max(send_data.set_front_wheel_angle_rad_, min_steering_wheel_angle));
-//  }
-//
-//  if (
-//    (fabsf(send_data.set_front_wheel_angle_rate_) > max_steering_wheel_angle_rate) &&
-//    check_steering_angle_rate) {
-//    send_data.set_front_wheel_angle_rate_ = std::min(
-//      max_steering_wheel_angle_rate,
-//      std::max(send_data.set_front_wheel_angle_rate_, -max_steering_wheel_angle_rate));
-//  }
-//
-//  CompToLlcData serial_dt(
-//    send_data.counter_, send_data.set_long_accel_mps2_, send_data.set_limit_velocity_mps_,
-//    send_data.set_front_wheel_angle_rad_, send_data.blinker_, send_data.headlight_,
-//    send_data.wiper_, send_data.gear_, send_data.mode_, send_data.hand_brake,
-//    send_data.takeover_request, 0);
-//  if(enable_debugger){
-//    RCLCPP_INFO(get_logger(), "send steering wheel angle: %f\n"
-//                "send acceleration: %f",
-//                send_data.set_front_wheel_angle_rad_, send_data.set_long_accel_mps2_);
-//  }
-//
-//  const auto serialData = pack_serial_data(serial_dt);
-//  serial->write(serialData);
-//  send_data.counter_++;
-//
-//  updater_.force_update();
 }
 
 void LeoVcuDriver::indicator_adapter_to_llc()
@@ -1087,15 +930,15 @@ void LeoVcuDriver::sendCanFrame() {
       comp_to_llc_cmd.long_msg_v1.set_long_accel = control_cmd_ptr_->longitudinal.acceleration;
       comp_to_llc_cmd.long_msg_v1.set_limit_velocity = control_cmd_ptr_->longitudinal.speed;
 
-      comp_to_llc_cmd.long_msg_v2.set_gas_pedal_pos = static_cast<float>(raw_control_cmd_ptr->throttle) / 100;
-      comp_to_llc_cmd.long_msg_v2.set_brake_pedal_pos = static_cast<float>(raw_control_cmd_ptr->brake) / 100;
+      // comp_to_llc_cmd.long_msg_v2.set_gas_pedal_pos = static_cast<float>(raw_control_cmd_ptr->throttle) / 100;
+      // comp_to_llc_cmd.long_msg_v2.set_brake_pedal_pos = static_cast<float>(raw_control_cmd_ptr->brake) / 100;
 
       comp_to_llc_cmd.vehicle_signal_cmd.blinker = hazard_lights_cmd_ptr_->command;
-      comp_to_llc_cmd.vehicle_signal_cmd.headlight = head_lights_cmd_ptr->command;
+      // comp_to_llc_cmd.vehicle_signal_cmd.headlight = head_lights_cmd_ptr->command;
       comp_to_llc_cmd.vehicle_signal_cmd.wiper = 0;
       comp_to_llc_cmd.vehicle_signal_cmd.gear = gear_cmd_ptr_->command;
       comp_to_llc_cmd.vehicle_signal_cmd.mode = gate_mode_cmd_ptr->data;
-      comp_to_llc_cmd.vehicle_signal_cmd.hand_brake = hand_brake_cmd_ptr->active; // not sure, check again
+      // comp_to_llc_cmd.vehicle_signal_cmd.hand_brake = hand_brake_cmd_ptr->active; // not sure, check again
       comp_to_llc_cmd.vehicle_signal_cmd.takeover_request = 0;
       comp_to_llc_cmd.vehicle_signal_cmd.long_mode = 0;
 
