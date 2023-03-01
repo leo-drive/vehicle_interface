@@ -171,6 +171,11 @@ public:
    */
   void gear_adapter_to_llc(const uint8_t & input);
   /**
+   * @brief It converts the headlight data which is taken from LLC wrt Autoware Universe
+   * messages.
+   */
+  uint8_t headlight_adapter_to_autoware(uint8_t & input);
+  /**
    * @brief It converts the control mode data which is taken from LLC wrt Autoware Universe
    * messages.
    */

@@ -40,6 +40,8 @@ struct vehicle_current_state_
   autoware_auto_vehicle_msgs::msg::GearReport gear_report_msg;
   autoware_auto_vehicle_msgs::msg::TurnIndicatorsReport turn_msg;
   autoware_auto_vehicle_msgs::msg::HazardLightsReport hazard_msg;
+  autoware_auto_vehicle_msgs::msg::HandBrakeReport hand_brake_msg;
+  autoware_auto_vehicle_msgs::msg::HeadlightsReport headlight_msg;
   char * debug_str_last {};
 };
 struct CompToLlcData_

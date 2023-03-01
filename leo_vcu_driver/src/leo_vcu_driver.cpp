@@ -1,4 +1,4 @@
-// Copyright 2022 Leo Drive Teknoloji A.Ş.
+// Copyright 2023 Leo Drive Teknoloji A.Ş.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -120,9 +120,9 @@ LeoVcuDriver::LeoVcuDriver()
       "/vehicle/status/steering_wheel_status", 1);
   llc_error_pub_ = create_publisher<std_msgs::msg::String>("/interface/status/llc_status", 1);
   hand_brake_pub_ = create_publisher<autoware_auto_vehicle_msgs::msg::HandBrakeReport>(
-          "/dur_bulcam1", rclcpp::QoS{1});
+          "/vehicle/status/hand_brake", rclcpp::QoS{1});
   headlights_pub_ = create_publisher<autoware_auto_vehicle_msgs::msg::HeadlightsReport>(
-          "/durbunudabulcam", rclcpp::QoS{1});
+          "/vehicle/status/headlights", rclcpp::QoS{1});
   // System error diagnostic
   updater_.setHardwareID("vehicle_error_monitor");
   updater_.add("pds_system_error", this, &LeoVcuDriver::checkPDSSystemError);
@@ -238,9 +238,8 @@ void LeoVcuDriver::gate_mode_cmd_callback(
 void LeoVcuDriver::llc_to_autoware_msg_adapter()
 {
   switch (msg_recv_can_frame_->id) {
-    case 1041:
+    case 1041: // get linear vehicle velocity and front wheel angle
       {
-        // get linear vehicle velocity and front wheel angle
         std::memcpy(&llc_to_comp_msg.vehicle_dyn_info_msg, &msg_recv_can_frame_->data, 8);
         current_state.twist.longitudinal_velocity =
           static_cast<float>(llc_to_comp_msg.vehicle_dyn_info_msg.linear_veh_velocity);
@@ -252,22 +251,29 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
       }
       break;
 
-    case 1042:
+    case 1042: // fuel, blinker, headlight, wiper, gear, mode, hand_brake and horn publisher
       {
-        // fuel, blinker, headlight, wiper, gear, mode, hand_brake and horn publisher
         std::memcpy(&llc_to_comp_msg.vehicle_sgl_status_msg, &msg_recv_can_frame_->data, 8);
 
-        // set hazard lights report
+        // set hazard lights status
         indicator_adapter_to_autoware(
           static_cast<uint8_t&>(llc_to_comp_msg.vehicle_sgl_status_msg.blinker));
 
-        // set gear report
+        // set gear status
         current_state.gear_report_msg.report = gear_adapter_to_autoware(
           static_cast<uint8_t&>(llc_to_comp_msg.vehicle_sgl_status_msg.gear));
 
-        // set control_mode report
+        // set control_mode status
         current_state.control_mode_report.mode = control_mode_adapter_to_autoware(
           static_cast<uint8_t&>(llc_to_comp_msg.vehicle_sgl_status_msg.mode));
+
+        // set headlight status
+        current_state.headlight_msg.report = headlight_adapter_to_autoware(
+          static_cast<uint8_t&>(llc_to_comp_msg.vehicle_sgl_status_msg.mode));
+
+        // set handbrake status
+        current_state.hand_brake_msg.report =
+          static_cast<uint8_t&>(llc_to_comp_msg.vehicle_sgl_status_msg.mode);
       }
       break;
     case 1043:
@@ -323,6 +329,17 @@ void LeoVcuDriver::autoware_to_llc_msg_adapter()
                                             control_cmd_ptr_->lateral.steering_tire_rotation_rate) -
                                           send_data.set_front_wheel_angle_rad_;
   control_mode_adapter_to_llc();
+}
+
+uint8_t LeoVcuDriver::headlight_adapter_to_autoware(uint8_t & input)
+{
+  if (input == 2) {
+    return autoware_auto_vehicle_msgs::msg::HeadlightsReport::ENABLE_LOW;
+  } else if (input == 3) {
+    return autoware_auto_vehicle_msgs::msg::HeadlightsReport::ENABLE_HIGH;
+  } else {
+    return autoware_auto_vehicle_msgs::msg::HeadlightsReport::DISABLE;
+  }
 }
 
 void LeoVcuDriver::control_mode_adapter_to_llc()
@@ -446,6 +463,7 @@ float LeoVcuDriver::steering_wheel_to_steering_tire_angle(
 
 void LeoVcuDriver::llc_publisher()
 {
+  //TODO(ismet): prepare appropriate llc publisher for CAN
   sendCanFrame();
 }
 
@@ -725,12 +743,24 @@ void LeoVcuDriver::receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg) {
     current_state.gear_report_msg.stamp = header.stamp;
     gear_status_pub_->publish(current_state.gear_report_msg);
   }
-  /* publish current and turn signal */
+
+  /* publish hazard signal */
   {
     current_state.hazard_msg.stamp = header.stamp;
     hazard_lights_status_pub_->publish(current_state.hazard_msg);
   }
 
+  /* publish headlight status */
+  {
+    current_state.hand_brake_msg.stamp = header.stamp;
+    hand_brake_pub_->publish(current_state.hand_brake_msg);
+  }
+
+  /* publish headlight status */
+  {
+    current_state.headlight_msg.stamp = header.stamp;
+    headlights_pub_->publish(current_state.headlight_msg);
+  }
 }
 
 void LeoVcuDriver::sendCanFrame() {
