@@ -293,9 +293,6 @@ private:
   // To LLC
 
   CompToLlcData_ send_data;
-//  const std::string serial_name_{"/dev/ttyACM0"};
-//  CallbackAsyncSerial * serial;
-  bool serial_ready{false};
   bool is_emergency_{false};
   bool prev_emergency{false};
   float current_emergency_acceleration{0.0};
@@ -413,7 +410,7 @@ private:
   void mechanical_error_check();
   void electrical_error_check();
 
-  LlcToCompMsg llc_to_comp_msg {};
+  LlcToCompData llc_to_comp_data_ {};
   CompToLlcCmd comp_to_llc_cmd {};
 };
 #endif  // LEO_VCU_DRIVER__LEO_VCU_DRIVER_HPP_

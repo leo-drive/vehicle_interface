@@ -240,11 +240,11 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
   switch (msg_recv_can_frame_->id) {
     case 1041: // get linear vehicle velocity and front wheel angle
       {
-        std::memcpy(&llc_to_comp_msg.vehicle_dyn_info_msg, &msg_recv_can_frame_->data, 8);
+        std::memcpy(&llc_to_comp_data_.vehicle_dyn_info_, &msg_recv_can_frame_->data, 8);
         current_state.twist.longitudinal_velocity =
-          static_cast<float>(llc_to_comp_msg.vehicle_dyn_info_msg.linear_veh_velocity);
+          static_cast<float>(llc_to_comp_data_.vehicle_dyn_info_.linear_veh_velocity);
         current_state.steering_wheel_status_msg.data =
-          static_cast<float>(llc_to_comp_msg.vehicle_dyn_info_msg.steering_wheel_angle);
+          static_cast<float>(llc_to_comp_data_.vehicle_dyn_info_.steering_wheel_angle);
         // TODO(ismet): update algorithm for golf vehicle
         current_state.steering_tire_status_msg.steering_tire_angle =
           steering_wheel_to_steering_tire_angle(current_state.steering_wheel_status_msg.data);
@@ -253,44 +253,42 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
 
     case 1042: // fuel, blinker, headlight, wiper, gear, mode, hand_brake and horn publisher
       {
-        std::memcpy(&llc_to_comp_msg.vehicle_sgl_status_msg, &msg_recv_can_frame_->data, 8);
+        std::memcpy(&llc_to_comp_data_.vehicle_sgl_status_, &msg_recv_can_frame_->data, 8);
 
         // set hazard lights status
         indicator_adapter_to_autoware(
-          static_cast<uint8_t&>(llc_to_comp_msg.vehicle_sgl_status_msg.blinker));
+          static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status_.blinker));
 
         // set gear status
         current_state.gear_report_msg.report = gear_adapter_to_autoware(
-          static_cast<uint8_t&>(llc_to_comp_msg.vehicle_sgl_status_msg.gear));
+          static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status_.gear));
 
         // set control_mode status
         current_state.control_mode_report.mode = control_mode_adapter_to_autoware(
-          static_cast<uint8_t&>(llc_to_comp_msg.vehicle_sgl_status_msg.mode));
+          static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status_.mode));
 
         // set headlight status
         current_state.headlight_msg.report = headlight_adapter_to_autoware(
-          static_cast<uint8_t&>(llc_to_comp_msg.vehicle_sgl_status_msg.mode));
+          static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status_.mode));
 
         // set handbrake status
         current_state.hand_brake_msg.report =
-          static_cast<uint8_t&>(llc_to_comp_msg.vehicle_sgl_status_msg.mode);
+          static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status_.mode);
       }
       break;
-    case 1043:
+    case 1043: // intervention, ready, motion_allow, throttle, brake, front_steer
       {
-        // intervention, ready, motion_allow, throttle, brake, front_steer
-        std::memcpy(&llc_to_comp_msg.motion_info_msg, &msg_recv_can_frame_->data, 8);
+        std::memcpy(&llc_to_comp_data_.motion_info_, &msg_recv_can_frame_->data, 8);
       }
       break;
-    case 1044:
+    case 1044: // temperature and rpm
       {
-      // temperature and rpm publisher
-      std::memcpy(&llc_to_comp_msg.motor_info_msg, &msg_recv_can_frame_->data, 8);
+      std::memcpy(&llc_to_comp_data_.motor_info_msg, &msg_recv_can_frame_->data, 8);
       }
       break;
     case 1045:
       {
-        std::memcpy(&llc_to_comp_msg.err_msg, &msg_recv_can_frame_->data, 8);
+        std::memcpy(&llc_to_comp_data_.err_msg, &msg_recv_can_frame_->data, 8);
         // error info msgs
         mechanical_error_check();
         electrical_error_check();
@@ -304,23 +302,27 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
 
 void LeoVcuDriver::autoware_to_llc_msg_adapter()
 {
-  if (current_state.gear_report_msg.report != gear_cmd_ptr_->command) {
+  if (current_state.gear_report_msg.report != gear_cmd_ptr_->command)
+  {
     // velocity is low -> the shift can be changed
-    if (std::fabs(current_state.twist.longitudinal_velocity) < gear_shift_velocity_threshold) {
+    if (std::fabs(current_state.twist.longitudinal_velocity) < gear_shift_velocity_threshold)
+    {
       // TODO(berkay): check here again!
       gear_adapter_to_llc(gear_cmd_ptr_->command);
-    } else {
+    } else
+    {
       RCLCPP_WARN(
         get_logger(), "Gear change is not allowed, current_velocity = %f",
         static_cast<double>(current_state.twist.longitudinal_velocity));
     }
   }
-  if (take_over_requested_) {
-    send_data.takeover_request = 1;
-  } else {
-    send_data.takeover_request = 0;
-  }
+  send_data.takeover_request = take_over_requested_ ? 1 : 0;
+
   indicator_adapter_to_llc();
+
+  control_mode_adapter_to_llc();
+
+  // TODO(ismet): update transform algorithm (tire -> wheel) for golf
   send_data.set_long_accel_mps2_ = control_cmd_ptr_->longitudinal.acceleration;
   send_data.set_front_wheel_angle_rad_ =
     steering_tire_to_steering_wheel_angle(control_cmd_ptr_->lateral.steering_tire_angle);
@@ -328,7 +330,6 @@ void LeoVcuDriver::autoware_to_llc_msg_adapter()
                                             control_cmd_ptr_->lateral.steering_tire_angle +
                                             control_cmd_ptr_->lateral.steering_tire_rotation_rate) -
                                           send_data.set_front_wheel_angle_rad_;
-  control_mode_adapter_to_llc();
 }
 
 uint8_t LeoVcuDriver::headlight_adapter_to_autoware(uint8_t & input)
@@ -463,7 +464,32 @@ float LeoVcuDriver::steering_wheel_to_steering_tire_angle(
 
 void LeoVcuDriver::llc_publisher()
 {
-  //TODO(ismet): prepare appropriate llc publisher for CAN
+  bool emergency_send{false};
+
+  if(pub_send_frame_->get_subscription_count() < 1)
+  {
+    RCLCPP_WARN(
+      get_logger(), "CAN RECEIVER IS NOT READY!");
+    return;
+  }
+  if (!autoware_data_ready())
+  {
+    //TODO(ismet): add what we need to send to CAN when autoware data is not ready
+    RCLCPP_WARN_ONCE(get_logger(), "Data from Autoware is not ready!");
+    return;
+  }
+
+  autoware_to_llc_msg_adapter();
+  //TODO(ismet): add emergency handling
+
+  /* check the steering wheel angle and steering wheel angle rate limits */
+  if (send_data.set_front_wheel_angle_rad_ < min_steering_wheel_angle ||
+      send_data.set_front_wheel_angle_rad_ > max_steering_wheel_angle)
+  {
+    send_data.set_front_wheel_angle_rad_ = std::min( max_steering_wheel_angle,
+               std::max(send_data.set_front_wheel_angle_rad_, min_steering_wheel_angle));
+  }
+  
   sendCanFrame();
 }
 
@@ -822,7 +848,7 @@ void LeoVcuDriver::sendCanFrame() {
 }
 
 void LeoVcuDriver::mechanical_error_check() {
-    error_str.data = std::bitset<8>(llc_to_comp_msg.err_msg.mechanical_errors).to_string();
+    error_str.data = std::bitset<8>(llc_to_comp_data_.err_msg.mechanical_errors).to_string();
     for (size_t i = 0; i < error_str.data.size(); i++) {
         if (error_str.data.at(i) == '1') {
             switch (i) {
@@ -842,7 +868,7 @@ void LeoVcuDriver::mechanical_error_check() {
 }
 
 void LeoVcuDriver::electrical_error_check() {
-    error_str.data = std::bitset<16>(llc_to_comp_msg.err_msg.electrical_errors).to_string();
+    error_str.data = std::bitset<16>(llc_to_comp_data_.err_msg.electrical_errors).to_string();
     for (size_t i = 0; i < error_str.data.size(); i++) {
         if (error_str.data.at(i) == '1') {
             switch (i) {

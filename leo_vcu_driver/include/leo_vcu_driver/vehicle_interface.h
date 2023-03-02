@@ -88,7 +88,7 @@ struct VehicleOdometry_
   float front_wheel_angle_rad;
 };
 
-struct LlcToCompData
+/*struct LlcToCompData
 {
   uint8_t frame_id1;
   uint8_t frame_id2;
@@ -99,7 +99,7 @@ struct LlcToCompData
   uint16_t crc;
   uint8_t eof_id1;
   uint8_t eof_id2;
-};
+};*/
 
 struct VehicleControlCommand_
 {
@@ -173,19 +173,19 @@ struct CompToLlcData
 };
 
 //can msgs
-struct __attribute__((packed)) VehicleErrorsMsg {
+struct __attribute__((packed)) VehicleErrorsData {
     uint8_t mechanical_errors;
     uint16_t electrical_errors;
 };
 
-struct __attribute__((packed)) MotorInfoMsg{
+struct __attribute__((packed)) MotorInfoData{
   uint8_t temp;
   uint16_t rpm;
   uint8_t k157;
 };
 
-struct __attribute__((packed)) MotionInfoMsg{
-  uint8_t interventions;
+struct __attribute__((packed)) MotionInfoData{
+  uint8_t intervention;
   uint8_t ready;
   uint8_t motion_allow;
   uint8_t throttle;
@@ -193,7 +193,7 @@ struct __attribute__((packed)) MotionInfoMsg{
   uint16_t front_steer;
 };
 
-struct __attribute__((packed)) VehicleSignalStatusMsg{
+struct __attribute__((packed)) VehicleSignalStatusData{
   uint8_t fuel;
   uint8_t blinker;
   uint8_t headlight;
@@ -204,19 +204,19 @@ struct __attribute__((packed)) VehicleSignalStatusMsg{
   uint8_t horn;
 };
 
-struct __attribute__((packed)) VehicleDynamicsInfoMsg{
+struct __attribute__((packed)) VehicleDynamicsInfoData{
   float linear_veh_velocity;
   float steering_wheel_angle;
 };
 
 //can commands
 
-struct __attribute__((packed)) FrontWheelCommandMsg{
+struct __attribute__((packed)) FrontWheelCommandData{
   float set_front_wheel_angle;
   float set_front_wheel_angle_rate;
 };
 
-struct __attribute__((packed)) VehicleSignalCommandMsg{
+struct __attribute__((packed)) VehicleSignalCommandData{
   uint8_t blinker;
   uint8_t headlight;
   uint8_t wiper;
@@ -227,29 +227,30 @@ struct __attribute__((packed)) VehicleSignalCommandMsg{
   uint8_t long_mode;
 };
 
-struct __attribute__((packed)) LongitudinalCommandMsgV2{
+struct __attribute__((packed)) LongitudinalCommandDataV2{
   float set_gas_pedal_pos;
   float set_brake_pedal_pos;
 };
 
-struct __attribute__((packed)) LongitudinalCommandMsgV1{
+struct __attribute__((packed)) LongitudinalCommandDataV1{
   float set_long_accel;
   float set_limit_velocity;
 };
 
-struct __attribute__((packed)) LlcToCompMsg {
-    VehicleErrorsMsg err_msg;
-    MotorInfoMsg motor_info_msg;
-    MotionInfoMsg motion_info_msg;
-    VehicleSignalStatusMsg vehicle_sgl_status_msg;
-    VehicleDynamicsInfoMsg vehicle_dyn_info_msg;
+struct __attribute__((packed)) LlcToCompData {
+    VehicleErrorsData err_msg;
+    MotorInfoData motor_info_msg;
+    MotionInfoData motion_info_;
+    VehicleSignalStatusData vehicle_sgl_status_;
+    VehicleDynamicsInfoData vehicle_dyn_info_;
+    StateReport_ state_report_;
 };
 
 struct __attribute__((packed)) CompToLlcCmd {
-    FrontWheelCommandMsg front_wheel_cmd_msg;
-    VehicleSignalCommandMsg vehicle_signal_cmd;
-    LongitudinalCommandMsgV1 long_msg_v1;
-    LongitudinalCommandMsgV2 long_msg_v2;
+    FrontWheelCommandData front_wheel_cmd_msg;
+    VehicleSignalCommandData vehicle_signal_cmd;
+    LongitudinalCommandDataV1 long_msg_v1;
+    LongitudinalCommandDataV2 long_msg_v2;
 };
 
 
