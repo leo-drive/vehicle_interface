@@ -88,19 +88,6 @@ struct VehicleOdometry_
   float front_wheel_angle_rad;
 };
 
-/*struct LlcToCompData
-{
-  uint8_t frame_id1;
-  uint8_t frame_id2;
-  uint16_t errors;
-  uint32_t counter;
-  VehicleOdometry_ vehicle_odometry;
-  StateReport_ state_report;
-  uint16_t crc;
-  uint8_t eof_id1;
-  uint8_t eof_id2;
-};*/
-
 struct VehicleControlCommand_
 {
   float set_long_accel_mps2;
@@ -121,58 +108,15 @@ struct VehicleStateCommand_
   uint8_t rsv;
 };
 
-struct CompToLlcData
+//can msgs
+struct LlcCanMsg
 {
-  explicit CompToLlcData(
-    uint32_t counter_,
-    float set_long_accel_mps2_,
-    float set_limit_velocity_mps_,
-    float set_front_wheel_angle_rad_,
-//    float set_front_wheel_angle_rate_,
-    uint8_t blinker_,
-    uint8_t headlight_,
-    uint8_t wiper_,
-    uint8_t gear_,
-    uint8_t mode_,
-    uint8_t hand_brake,
-    uint8_t takeover_request,
-    uint8_t rsv) :
-
-  frame_id1 {comp_to_llc_msg_frame_id},
-  frame_id2 {comp_to_llc_msg_frame_id},
-  reserved {0},
-  counter {counter_},
-  vehicle_control_cmd {set_long_accel_mps2_,
-    set_limit_velocity_mps_,
-    set_front_wheel_angle_rad_/*,
-    set_front_wheel_angle_rate_*/},
-  vehicle_state_cmd {blinker_,
-    headlight_,
-    wiper_,
-    gear_,
-    mode_,
-    hand_brake,
-    takeover_request,
-    rsv},
-  crc {0},
-  eof_id1 {comp_to_llc_msg_eof_id},
-  eof_id2 {comp_to_llc_msg_eof_id} {
-
-    crc = crc_16(reinterpret_cast < const uint8_t * > (this), sizeof(CompToLlcData) - 4);
-  }
-
-  uint8_t frame_id1;
-  uint8_t frame_id2;
-  uint16_t reserved;
-  uint32_t counter;
-  VehicleControlCommand_ vehicle_control_cmd;
-  VehicleStateCommand_ vehicle_state_cmd;
-  uint16_t crc;
-  uint8_t eof_id1;
-  uint8_t eof_id2;
+    can_msgs::msg::Frame msg_long_cmd_frame_1;
+    can_msgs::msg::Frame msg_long_cmd_frame_2;
+    can_msgs::msg::Frame msg_veh_signal_cmd_frame;
+    can_msgs::msg::Frame msg_front_wheel_cmd_frame;
 };
 
-//can msgs
 struct __attribute__((packed)) VehicleErrorsData {
     uint8_t mechanical_errors;
     uint16_t electrical_errors;
@@ -212,7 +156,7 @@ struct __attribute__((packed)) VehicleDynamicsInfoData{
 //can commands
 
 struct __attribute__((packed)) FrontWheelCommandData{
-  float set_front_wheel_angle;
+  float set_front_wheel_angle_rad;
   float set_front_wheel_angle_rate;
 };
 

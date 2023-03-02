@@ -412,5 +412,6 @@ private:
 
   LlcToCompData llc_to_comp_data_ {};
   CompToLlcCmd comp_to_llc_cmd {};
+  LlcCanMsg llc_can_msgs;
 };
 #endif  // LEO_VCU_DRIVER__LEO_VCU_DRIVER_HPP_
