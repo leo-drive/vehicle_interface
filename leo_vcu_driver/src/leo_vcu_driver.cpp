@@ -414,39 +414,32 @@ uint8_t LeoVcuDriver::gear_adapter_to_autoware(
   uint8_t & input)  // TODO(berkay): Check here! Maybe we can make it faster!
 {
   switch (input) {
-    case 1:
-      return 2;
-    case 2:
-      return 20;
-    case 3:
+    case 1: // PARK
       return 22;
-    case 4:
-      return 23;
-    case 5:
+    case 2: // REVERSE
+      return 20;
+    case 3: // NEUTRAL
       return 1;
-    default:
-      return 0;
+    case 4: // DRIVE
+      return 2;
+    default: // PARK
+      return 22;
   }
 }
 
 void LeoVcuDriver::gear_adapter_to_llc(const uint8_t & input)
 {
-  if (input <= 19 && input >= 2) {
-    comp_to_llc_cmd.vehicle_signal_cmd.gear = 1;
-  } else if (input == 20) {
-    if (reverse_gear_enabled_) {
+  switch (input) {
+    case 1: // NEUTRAL
+      comp_to_llc_cmd.vehicle_signal_cmd.gear =  3;
+    case 2: // DRIVE
+      comp_to_llc_cmd.vehicle_signal_cmd.gear = 4;
+    case 20: // REVERSE
       comp_to_llc_cmd.vehicle_signal_cmd.gear = 2;
-    } else {
-      comp_to_llc_cmd.vehicle_signal_cmd.gear = 0;
-    }
-  } else if (input == 22) {
-    comp_to_llc_cmd.vehicle_signal_cmd.gear = 3;
-  } else if (input == 23) {
-    comp_to_llc_cmd.vehicle_signal_cmd.gear = 4;
-  } else if (input == 1) {
-    comp_to_llc_cmd.vehicle_signal_cmd.gear = 5;
-  } else {
-    comp_to_llc_cmd.vehicle_signal_cmd.gear = 0;
+    case 22: // PARK
+      comp_to_llc_cmd.vehicle_signal_cmd.gear = 1;
+    default: // PARK
+      comp_to_llc_cmd.vehicle_signal_cmd.gear = 1;
   }
 }
 
