@@ -289,8 +289,6 @@ private:
   // To LLC
 
   bool is_emergency_{false};
-  bool prev_emergency{false};
-  float current_emergency_acceleration{0.0};
   bool take_over_requested_{false};
 
   /* subscribers */
@@ -348,14 +346,12 @@ private:
   float wheel_base_{};                    // [m]
   double command_timeout_ms_{};           // vehicle_cmd timeout [ms]
   bool reverse_gear_enabled_{false};      // reverse gear enabled or not
-  float emergency_stop_acceleration{};    // [m/s^2]
   float gear_shift_velocity_threshold{};  // [m/s]
   float max_steering_wheel_angle{};       // [degree]
   float min_steering_wheel_angle{};       // [degree]
   float max_steering_wheel_angle_rate{};  // [degree/sec]
   bool check_steering_angle_rate{};
   float soft_stop_acceleration{};                 // [m/s^2]
-  float add_emergency_acceleration_per_second{};  // [m/s^3]
   bool enable_emergency{};
   bool enable_cmd_timeout_emergency{};
   bool enable_debugger{};

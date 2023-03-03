@@ -40,8 +40,6 @@ LeoVcuDriver::LeoVcuDriver()
   /* parameters for vehicle specifications */
   wheel_base_ = static_cast<float>(vehicle_info_.wheel_base_m);
   reverse_gear_enabled_ = declare_parameter("reverse_gear_enabled", false);
-  emergency_stop_acceleration =
-    static_cast<float>(declare_parameter("emergency_stop_acceleration", -5.0));
   gear_shift_velocity_threshold =
     static_cast<float>(declare_parameter("gear_shift_velocity_threshold", 0.1));
   max_steering_wheel_angle =
@@ -51,9 +49,6 @@ LeoVcuDriver::LeoVcuDriver()
   max_steering_wheel_angle_rate =
     static_cast<float>(declare_parameter("max_steering_wheel_angle_rate", 300.0));
   check_steering_angle_rate = declare_parameter("check_steering_angle_rate", true);
-  soft_stop_acceleration = static_cast<float>(declare_parameter("soft_stop_acceleration", -1.5));
-  add_emergency_acceleration_per_second =
-    static_cast<float>(declare_parameter("add_emergency_acceleration_per_second", -0.5));
   enable_emergency = declare_parameter("enable_emergency", true);
   enable_cmd_timeout_emergency = declare_parameter("enable_cmd_timeout_emergency", true);
   enable_debugger = declare_parameter("enable_debugger", true);
@@ -75,7 +70,7 @@ LeoVcuDriver::LeoVcuDriver()
       "/system/emergency/hazard_lights_cmd", rclcpp::QoS{1},
       std::bind(&LeoVcuDriver::hazard_lights_cmd_callback, this, _1));
   engage_cmd_sub_ = create_subscription<autoware_auto_vehicle_msgs::msg::Engage>(
-    "/vehicle/engage", rclcpp::QoS{1}, std::bind(&LeoVcuDriver::engage_cmd_callback, this, _1));
+    "/autoware/engage", rclcpp::QoS{1}, std::bind(&LeoVcuDriver::engage_cmd_callback, this, _1));
   gate_mode_sub_ = create_subscription<tier4_control_msgs::msg::GateMode>(
     "/control/current_gate_mode", 1, std::bind(&LeoVcuDriver::gate_mode_cmd_callback, this, _1));
   emergency_sub_ = create_subscription<tier4_vehicle_msgs::msg::VehicleEmergencyStamped>(
@@ -139,11 +134,10 @@ LeoVcuDriver::LeoVcuDriver()
   updater_.add("bbw_timeout", this, &LeoVcuDriver::checkBBWTimeoutError);
 
   // Timer
-  loop_rate_ = 25;
+  loop_rate_ = 100;
   const auto period_ns = rclcpp::Rate(loop_rate_).period();
   tim_data_sender_ = rclcpp::create_timer(
     this, get_clock(), period_ns, std::bind(&LeoVcuDriver::llc_publisher, this));
-  current_emergency_acceleration = -std::fabs(soft_stop_acceleration);
 
   sub_recv_frame_ = this->create_subscription<can_msgs::msg::Frame>(
           "/from_can_bus", rclcpp::QoS{1}, std::bind(&LeoVcuDriver::receivedFrameCallback, this, _1));
@@ -416,6 +410,46 @@ void LeoVcuDriver::indicator_adapter_to_llc()
   }
 }
 
+uint8_t LeoVcuDriver::gear_adapter_to_autoware(
+  uint8_t & input)  // TODO(berkay): Check here! Maybe we can make it faster!
+{
+  switch (input) {
+    case 1:
+      return 2;
+    case 2:
+      return 20;
+    case 3:
+      return 22;
+    case 4:
+      return 23;
+    case 5:
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+void LeoVcuDriver::gear_adapter_to_llc(const uint8_t & input)
+{
+  if (input <= 19 && input >= 2) {
+    comp_to_llc_cmd.vehicle_signal_cmd.gear = 1;
+  } else if (input == 20) {
+    if (reverse_gear_enabled_) {
+      comp_to_llc_cmd.vehicle_signal_cmd.gear = 2;
+    } else {
+      comp_to_llc_cmd.vehicle_signal_cmd.gear = 0;
+    }
+  } else if (input == 22) {
+    comp_to_llc_cmd.vehicle_signal_cmd.gear = 3;
+  } else if (input == 23) {
+    comp_to_llc_cmd.vehicle_signal_cmd.gear = 4;
+  } else if (input == 1) {
+    comp_to_llc_cmd.vehicle_signal_cmd.gear = 5;
+  } else {
+    comp_to_llc_cmd.vehicle_signal_cmd.gear = 0;
+  }
+}
+
 size_t compare(std::vector<float> & vec, double value)
 {
   double dist = std::numeric_limits<double>::max();
@@ -500,10 +534,9 @@ float LeoVcuDriver::steering_wheel_to_steering_tire_angle(
 
 void LeoVcuDriver::llc_publisher()
 {
-  std_msgs::msg::Header header;
-  header.frame_id = this->base_frame_id_;
-  header.stamp = get_clock()->now();
   bool emergency_send{false};
+  bool timeouted = false;
+  const rclcpp::Time current_time = get_clock()->now();
 
   if(pub_send_frame_->get_subscription_count() < 1)
   {
@@ -519,7 +552,54 @@ void LeoVcuDriver::llc_publisher()
   }
 
   autoware_to_llc_msg_adapter();
-  //TODO(ismet): add emergency handling
+  //TODO(ismet): check emergency handling
+
+  if (emergency_cmd_ptr->emergency || is_emergency_) {
+    if (enable_emergency) {
+      emergency_send = true;
+    }
+  }
+
+  const double control_cmd_delta_time_ms =
+    (current_time - control_command_received_time_).seconds() * 1000.0;
+  const double t_out = command_timeout_ms_;
+  if (t_out >= 0 && control_cmd_delta_time_ms > t_out) {
+    timeouted = true;
+  }
+
+  if (timeouted) {
+    RCLCPP_ERROR(
+      get_logger(), "Emergency Stopping, controller output is timeouted = %f ms", control_cmd_delta_time_ms);
+    if (enable_cmd_timeout_emergency) {
+      emergency_send = true;
+    }
+  }
+
+  if (emergency_send) {
+    comp_to_llc_cmd.vehicle_signal_cmd.takeover_request = 1;
+    RCLCPP_ERROR(get_logger(), "~EMERGENCY~\n");
+    RCLCPP_ERROR(get_logger(), "Single Point Faults: Emergency hold: %d\n", hazard_status_stamped_->status.emergency_holding);
+    for (const auto & diag : hazard_status_stamped_->status.diag_single_point_fault) {
+      RCLCPP_ERROR(
+        get_logger(),
+        "level: %hhu\n"
+        "name: %s\n"
+        "hardware_id: %s\n"
+        "message: %s",
+        diag.level, diag.name.c_str(), diag.hardware_id.c_str(), diag.message.c_str());
+    }
+    RCLCPP_ERROR(get_logger(), "Latent Faults: Emergency hold: %d\n", hazard_status_stamped_->status.emergency_holding);
+    for (const auto & diag : hazard_status_stamped_->status.diag_latent_fault) {
+      RCLCPP_ERROR(
+        get_logger(),
+        "level: %hhu\n"
+        "name: %s\n"
+        "hardware_id: %s\n"
+        "message: %s",
+        diag.level, diag.name.c_str(), diag.hardware_id.c_str(), diag.message.c_str());
+    }
+  }
+
 
   /* check the steering wheel angle and steering wheel angle rate limits */
   if (comp_to_llc_cmd.front_wheel_cmd_msg.set_front_wheel_angle_rad < min_steering_wheel_angle ||
@@ -539,7 +619,10 @@ void LeoVcuDriver::llc_publisher()
   std::memcpy(&llc_can_msgs.msg_veh_signal_cmd_frame.data, &comp_to_llc_cmd.vehicle_signal_cmd, 8);
   std::memcpy(&llc_can_msgs.msg_front_wheel_cmd_frame.data, &comp_to_llc_cmd.front_wheel_cmd_msg, 8);
 
-  //sendCanFrame();
+  // publish can msgs
+  std_msgs::msg::Header header;
+  header.frame_id = this->base_frame_id_;
+  header.stamp = get_clock()->now();
 
   llc_can_msgs.msg_long_cmd_frame_1.set__header(header);
   llc_can_msgs.msg_long_cmd_frame_1.dlc = static_cast<uint8_t>(8);
@@ -561,46 +644,6 @@ void LeoVcuDriver::llc_publisher()
   pub_send_frame_->publish(llc_can_msgs.msg_long_cmd_frame_2);
   pub_send_frame_->publish(llc_can_msgs.msg_veh_signal_cmd_frame);
   pub_send_frame_->publish(llc_can_msgs.msg_front_wheel_cmd_frame);
-}
-
-uint8_t LeoVcuDriver::gear_adapter_to_autoware(
-  uint8_t & input)  // TODO(berkay): Check here! Maybe we can make it faster!
-{
-  switch (input) {
-    case 1:
-      return 2;
-    case 2:
-      return 20;
-    case 3:
-      return 22;
-    case 4:
-      return 23;
-    case 5:
-      return 1;
-    default:
-      return 0;
-  }
-}
-
-void LeoVcuDriver::gear_adapter_to_llc(const uint8_t & input)
-{
-  if (input <= 19 && input >= 2) {
-      comp_to_llc_cmd.vehicle_signal_cmd.gear = 1;
-  } else if (input == 20) {
-    if (reverse_gear_enabled_) {
-      comp_to_llc_cmd.vehicle_signal_cmd.gear = 2;
-    } else {
-      comp_to_llc_cmd.vehicle_signal_cmd.gear = 0;
-    }
-  } else if (input == 22) {
-    comp_to_llc_cmd.vehicle_signal_cmd.gear = 3;
-  } else if (input == 23) {
-    comp_to_llc_cmd.vehicle_signal_cmd.gear = 4;
-  } else if (input == 1) {
-    comp_to_llc_cmd.vehicle_signal_cmd.gear = 5;
-  } else {
-    comp_to_llc_cmd.vehicle_signal_cmd.gear = 0;
-  }
 }
 
 bool LeoVcuDriver::autoware_data_ready()

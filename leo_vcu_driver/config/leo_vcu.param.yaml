@@ -4,14 +4,11 @@
     command_timeout_ms: 1000.0
     loop_rate: 100.0
     reverse_gear_enabled: false
-    emergency_stop_acceleration: -5.0
     gear_shift_velocity_threshold: 0.1
     max_steering_wheel_angle: 700.0
     min_steering_wheel_angle: -700.0
     max_steering_wheel_angle_rate: 300.0
     check_steering_angle_rate: false
-    soft_stop_acceleration: -2.5
-    add_emergency_acceleration_per_second: -1.5
     enable_emergency: true
     enable_cmd_timeout_emergency: true
     enable_debugger: false
