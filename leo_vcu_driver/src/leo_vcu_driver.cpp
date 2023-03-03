@@ -139,7 +139,7 @@ LeoVcuDriver::LeoVcuDriver()
   updater_.add("bbw_timeout", this, &LeoVcuDriver::checkBBWTimeoutError);
 
   // Timer
-  loop_rate_ = 1;
+  loop_rate_ = 25;
   const auto period_ns = rclcpp::Rate(loop_rate_).period();
   tim_data_sender_ = rclcpp::create_timer(
     this, get_clock(), period_ns, std::bind(&LeoVcuDriver::llc_publisher, this));
@@ -382,13 +382,20 @@ uint8_t LeoVcuDriver::control_mode_adapter_to_autoware(uint8_t & input)
 
 void LeoVcuDriver::indicator_adapter_to_autoware(uint8_t & input)
 {
-  if (input == 3) {
+  if (input == 0) {
+    current_state.hazard_msg.report = autoware_auto_vehicle_msgs::msg::HazardLightsReport::DISABLE;
+    current_state.turn_msg.report = autoware_auto_vehicle_msgs::msg::TurnIndicatorsReport::DISABLE;
+  } else if (input == 3) {
     current_state.hazard_msg.report = autoware_auto_vehicle_msgs::msg::HazardLightsReport::ENABLE;
     current_state.turn_msg.report = autoware_auto_vehicle_msgs::msg::TurnIndicatorsReport::DISABLE;
   } else {
     current_state.hazard_msg.report = autoware_auto_vehicle_msgs::msg::HazardLightsReport::DISABLE;
-    current_state.turn_msg.report = input;
-  }
+    if (input == 1){
+      current_state.turn_msg.report = autoware_auto_vehicle_msgs::msg::TurnIndicatorsReport::ENABLE_LEFT;
+    } else {
+      current_state.turn_msg.report = autoware_auto_vehicle_msgs::msg::TurnIndicatorsReport::ENABLE_RIGHT;
+    }
+    }
 }
 
 void LeoVcuDriver::indicator_adapter_to_llc()
@@ -815,6 +822,12 @@ void LeoVcuDriver::receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg) {
   {
     current_state.hazard_msg.stamp = header.stamp;
     hazard_lights_status_pub_->publish(current_state.hazard_msg);
+  }
+
+  /* publish turn signal */
+  {
+    current_state.turn_msg.stamp = header.stamp;
+    turn_indicators_status_pub_->publish(current_state.turn_msg);
   }
 
   /* publish headlight status */
