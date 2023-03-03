@@ -44,24 +44,6 @@ struct vehicle_current_state_
   autoware_auto_vehicle_msgs::msg::HeadlightsReport headlight_msg;
   char * debug_str_last {};
 };
-struct CompToLlcData_
-{
-  uint32_t counter_ = {0};
-  float set_long_accel_mps2_ {};
-  float set_limit_velocity_mps_ {};
-  float set_front_wheel_angle_rad_ {};
-  float set_front_wheel_angle_rate_ {};
-  uint8_t blinker_ {};
-  uint8_t headlight_ {1};
-  uint8_t wiper_ {1};
-  uint8_t gear_ {};
-  uint8_t mode_ {};
-  uint8_t hand_brake {0};
-  uint8_t takeover_request {0}; // no takeover for 0, takeover for 1
-  uint8_t rsv {0};
-  // Not used data: wiper, headlight, handbrake
-  // Default values wiper = 1 (Off), headlight = 1 (Off), handbrake = 0 (not used in LLC)
-};
 
 struct StateReport_
 {
@@ -80,32 +62,6 @@ struct StateReport_
   uint8_t brake;           // %
   int16_t front_steer;           //degree
   char debugstr[24];
-};
-
-struct VehicleOdometry_
-{
-  float velocity_mps;
-  float front_wheel_angle_rad;
-};
-
-struct VehicleControlCommand_
-{
-  float set_long_accel_mps2;
-  float set_limit_velocity_mps;
-  float set_front_wheel_angle_rad;
-//  float set_front_wheel_angle_rate_;
-};
-
-struct VehicleStateCommand_
-{
-  uint8_t blinker;
-  uint8_t headlight;
-  uint8_t wiper;
-  uint8_t gear;
-  uint8_t mode;
-  uint8_t hand_brake;           //bool
-  uint8_t takeover_request;          //bool
-  uint8_t rsv;
 };
 
 //can msgs

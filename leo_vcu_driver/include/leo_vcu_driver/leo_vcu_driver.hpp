@@ -147,10 +147,6 @@ public:
    */
   void llc_publisher();
   /**
-   * @brief It takes data from interface to low level controller.
-   */
-  void serial_receive_callback(const char * data, unsigned int len);
-  /**
    * @brief It converts the steering angle to steering wheel angle.
    * Steering angle means "Teker açısı" and which is radian.
    * Steering wheel angle means "Direksiyon açısı" and which is degree.
@@ -292,7 +288,6 @@ private:
 
   // To LLC
 
-  CompToLlcData_ send_data;
   bool is_emergency_{false};
   bool prev_emergency{false};
   float current_emergency_acceleration{0.0};
