@@ -36,7 +36,7 @@ LeoVcuDriver::LeoVcuDriver()
   /// Get Params Here!
   base_frame_id_ = declare_parameter("base_frame_id", "base_link");
   command_timeout_ms_ = declare_parameter("command_timeout_ms", 1000.0);
-  loop_rate_ = declare_parameter("loop_rate", 100.0);
+  data_send_rate_ = declare_parameter("data_send_rate", 100.0);
   /* parameters for vehicle specifications */
   wheel_base_ = static_cast<float>(vehicle_info_.wheel_base_m);
   reverse_gear_enabled_ = declare_parameter("reverse_gear_enabled", false);
@@ -53,6 +53,11 @@ LeoVcuDriver::LeoVcuDriver()
   enable_cmd_timeout_emergency = declare_parameter("enable_cmd_timeout_emergency", true);
   enable_debugger = declare_parameter("enable_debugger", true);
   steering_offset = static_cast<float>(declare_parameter("steering_offset", 0.0));
+  emergency_stop_acceleration =
+    static_cast<float>(declare_parameter("emergency_stop_acceleration", -5.0));
+  soft_stop_acceleration = static_cast<float>(declare_parameter("soft_stop_acceleration", -1.5));
+  add_emergency_acceleration_per_second =
+    static_cast<float>(declare_parameter("add_emergency_acceleration_per_second", -0.5));
 
   /* Subscribers */
 
@@ -134,8 +139,7 @@ LeoVcuDriver::LeoVcuDriver()
   updater_.add("bbw_timeout", this, &LeoVcuDriver::checkBBWTimeoutError);
 
   // Timer
-  loop_rate_ = 100;
-  const auto period_ns = rclcpp::Rate(loop_rate_).period();
+  const auto period_ns = rclcpp::Rate(data_send_rate_).period();
   tim_data_sender_ = rclcpp::create_timer(
     this, get_clock(), period_ns, std::bind(&LeoVcuDriver::llc_publisher, this));
 
@@ -432,14 +436,19 @@ void LeoVcuDriver::gear_adapter_to_llc(const uint8_t & input)
   switch (input) {
     case 1: // NEUTRAL
       comp_to_llc_cmd.vehicle_signal_cmd.gear =  3;
+      break;
     case 2: // DRIVE
       comp_to_llc_cmd.vehicle_signal_cmd.gear = 4;
+      break;
     case 20: // REVERSE
       comp_to_llc_cmd.vehicle_signal_cmd.gear = 2;
+      break;
     case 22: // PARK
       comp_to_llc_cmd.vehicle_signal_cmd.gear = 1;
+      break;
     default: // PARK
       comp_to_llc_cmd.vehicle_signal_cmd.gear = 1;
+      break;
   }
 }
 
@@ -591,8 +600,26 @@ void LeoVcuDriver::llc_publisher()
         "message: %s",
         diag.level, diag.name.c_str(), diag.hardware_id.c_str(), diag.message.c_str());
     }
+    if (!prev_emergency_) {
+      current_emergency_acceleration_ = -std::fabs(soft_stop_acceleration);
+      prev_emergency_ = true;
+    } else {
+      current_emergency_acceleration_ +=
+        (1 / data_send_rate_) * (-std::fabs(add_emergency_acceleration_per_second));
+    }
+    comp_to_llc_cmd.long_msg_v1.set_long_accel =
+      -std::fabs(std::max(-std::fabs(current_emergency_acceleration_), -std::fabs(emergency_stop_acceleration)));
+    RCLCPP_ERROR(
+      get_logger(),
+      "Emergency Stopping, emergency = %d, acceleration = %f, max_acc = %f, soft_acceleration = "
+      "%f, acceleration per second = %f\n",
+      emergency_cmd_ptr->emergency, comp_to_llc_cmd.long_msg_v1.set_long_accel, emergency_stop_acceleration,
+      soft_stop_acceleration, add_emergency_acceleration_per_second);
+  } else {
+    prev_emergency_ = false;
+    current_emergency_acceleration_ = -std::fabs(soft_stop_acceleration);
+    comp_to_llc_cmd.vehicle_signal_cmd.takeover_request = 0;
   }
-
 
   /* check the steering wheel angle and steering wheel angle rate limits */
   if (comp_to_llc_cmd.front_wheel_cmd_msg.set_front_wheel_angle_rad < min_steering_wheel_angle ||
@@ -637,6 +664,8 @@ void LeoVcuDriver::llc_publisher()
   pub_send_frame_->publish(llc_can_msgs.msg_long_cmd_frame_2);
   pub_send_frame_->publish(llc_can_msgs.msg_veh_signal_cmd_frame);
   pub_send_frame_->publish(llc_can_msgs.msg_front_wheel_cmd_frame);
+
+  updater_.force_update();
 }
 
 bool LeoVcuDriver::autoware_data_ready()

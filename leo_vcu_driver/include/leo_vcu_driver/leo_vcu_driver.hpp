@@ -289,6 +289,8 @@ private:
   // To LLC
 
   bool is_emergency_{false};
+  bool prev_emergency_{false};
+  float current_emergency_acceleration_{0.0};
   bool take_over_requested_{false};
 
   /* subscribers */
@@ -342,7 +344,7 @@ private:
   vehicle_info_util::VehicleInfo vehicle_info_;
 
   std::string base_frame_id_;
-  double loop_rate_{};                    // [Hz]
+  double data_send_rate_{};                    // [Hz]
   float wheel_base_{};                    // [m]
   double command_timeout_ms_{};           // vehicle_cmd timeout [ms]
   bool reverse_gear_enabled_{false};      // reverse gear enabled or not
@@ -351,11 +353,13 @@ private:
   float min_steering_wheel_angle{};       // [degree]
   float max_steering_wheel_angle_rate{};  // [degree/sec]
   bool check_steering_angle_rate{};
-  float soft_stop_acceleration{};                 // [m/s^2]
   bool enable_emergency{};
   bool enable_cmd_timeout_emergency{};
   bool enable_debugger{};
   float steering_offset{0.0};
+  float emergency_stop_acceleration{};
+  float soft_stop_acceleration{};         // [m/s^2]
+  float add_emergency_acceleration_per_second{};
 
   // Diagnostic Updater Object
   diagnostic_updater::Updater updater_;
