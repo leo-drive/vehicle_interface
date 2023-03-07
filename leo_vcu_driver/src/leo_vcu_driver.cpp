@@ -123,20 +123,23 @@ LeoVcuDriver::LeoVcuDriver()
           "/vehicle/status/hand_brake", rclcpp::QoS{1});
   headlights_pub_ = create_publisher<autoware_auto_vehicle_msgs::msg::HeadlightsReport>(
           "/vehicle/status/headlights", rclcpp::QoS{1});
+
   // System error diagnostic
   updater_.setHardwareID("vehicle_error_monitor");
-  updater_.add("pds_system_error", this, &LeoVcuDriver::checkPDSSystemError);
-  updater_.add("bbw_system_error", this, &LeoVcuDriver::checkBBWSystemError);
+  updater_.add("motor_running_error", this, &LeoVcuDriver::checkMotorRunningError);
+  updater_.add("kl75_error", this, &LeoVcuDriver::checkKl75Error);
+  updater_.add("pds_timeout_error", this, &LeoVcuDriver::checkPDSTimeoutError);
+  updater_.add("pds_bus_error", this, &LeoVcuDriver::checkPDSBusError);
+  updater_.add("by_wire_power_error", this, &LeoVcuDriver::checkByWireError);
+  updater_.add("epas_power_error", this, &LeoVcuDriver::checkEPASPowerError);
+  updater_.add("brake_power_error", this, &LeoVcuDriver::checkBrakePowerError);
+  updater_.add("throttle_ecu_timeout_error", this, &LeoVcuDriver::checkThrottleTimeoutError);
+  updater_.add("g29_timeout_error", this, &LeoVcuDriver::checkG29TimeoutError);
   updater_.add("epas_system_error", this, &LeoVcuDriver::checkEPASSystemError);
-  updater_.add("pc_ignition_error", this, &LeoVcuDriver::checkPCIgnitionError);
-  updater_.add("epas_pwr_error", this, &LeoVcuDriver::checkEPASPowerError);
-  updater_.add("sbw_pwr_error", this, &LeoVcuDriver::checkSBWPowerError);
-  updater_.add("bbw_pwr_error", this, &LeoVcuDriver::checkBBWPowerError);
-  updater_.add("pc_timeout", this, &LeoVcuDriver::checkPCTimeoutError);
-  updater_.add("bcu_timeout", this, &LeoVcuDriver::checkBCUTimeoutError);
-  updater_.add("pds_timeout", this, &LeoVcuDriver::checkPDSTimeoutError);
-  updater_.add("epas_timeout", this, &LeoVcuDriver::checkEPASTimeoutError);
-  updater_.add("bbw_timeout", this, &LeoVcuDriver::checkBBWTimeoutError);
+  updater_.add("epas_timeout_error", this, &LeoVcuDriver::checkEPASTimeoutError);
+  updater_.add("brake_system_error", this, &LeoVcuDriver::checkBrakeSystemError);
+  updater_.add("brake_timeout_error", this, &LeoVcuDriver::checkBrakeTimeoutError);
+  updater_.add("pc_timeout_error", this, &LeoVcuDriver::checkPCTimeoutError);
 
   // Timer
   const auto period_ns = rclcpp::Rate(data_send_rate_).period();
@@ -234,6 +237,7 @@ void LeoVcuDriver::gate_mode_cmd_callback(
 
 void LeoVcuDriver::llc_to_autoware_msg_adapter()
 {
+  SystemError latest_system_error;
   switch (msg_recv_can_frame_->id) {
     case 1041: // get linear vehicle velocity and front wheel angle
       {
@@ -283,18 +287,19 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
       std::memcpy(&llc_to_comp_data_.motor_info_msg, &msg_recv_can_frame_->data, 8);
       }
       break;
-    case 1045:
+    case 1045: // errors
       {
         std::memcpy(&llc_to_comp_data_.err_msg, &msg_recv_can_frame_->data, 8);
         // error info msgs
-        mechanical_error_check();
-        electrical_error_check();
+        mechanical_error_check(latest_system_error);
+        electrical_error_check(latest_system_error);
       }
       break;
     default:
       RCLCPP_ERROR(this->get_logger(), "Invalid CanId\n");
       break;
   }
+  system_error_diagnostics_ = latest_system_error;
 }
 
 void LeoVcuDriver::autoware_to_llc_msg_adapter()
@@ -699,138 +704,6 @@ bool LeoVcuDriver::autoware_data_ready()
 
   return output;
 }
-void LeoVcuDriver::checkPDSSystemError(diagnostic_updater::DiagnosticStatusWrapper & stat)
-{
-  stat.add("pds_system_error", system_error_diagnostics_.pds_system_error);
-  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-  std::string diag_message = "PDS system works as expected";
-  if (system_error_diagnostics_.pds_system_error) {
-    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-    diag_message = "PDS system error detected";
-  }
-  stat.summary(diag_level, diag_message);
-}
-void LeoVcuDriver::checkBBWSystemError(diagnostic_updater::DiagnosticStatusWrapper & stat)
-{
-  stat.add("bbw_system_error", system_error_diagnostics_.bbw_system_error);
-  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-  std::string diag_message = "BBW system works as expected";
-  if (system_error_diagnostics_.bbw_system_error) {
-    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-    diag_message = "BBW system error detected";
-  }
-  stat.summary(diag_level, diag_message);
-}
-void LeoVcuDriver::checkEPASSystemError(diagnostic_updater::DiagnosticStatusWrapper & stat)
-{
-  stat.add("epas_system_error", system_error_diagnostics_.epas_system_error);
-  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-  std::string diag_message = "EPAS system works as expected";
-  if (system_error_diagnostics_.epas_system_error) {
-    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-    diag_message = "EPAS system error detected";
-  }
-  stat.summary(diag_level, diag_message);
-}
-void LeoVcuDriver::checkPCIgnitionError(diagnostic_updater::DiagnosticStatusWrapper & stat)
-{
-  stat.add("pc_ignition_error", system_error_diagnostics_.pc_ignition_error);
-  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-  std::string diag_message = "PC ignitions received";
-  if (system_error_diagnostics_.pc_ignition_error) {
-    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-    diag_message = "PC ignition has not been received";
-  }
-  stat.summary(diag_level, diag_message);
-}
-void LeoVcuDriver::checkEPASPowerError(diagnostic_updater::DiagnosticStatusWrapper & stat)
-{
-  stat.add("epas_pwr_error", system_error_diagnostics_.epas_pwr_error);
-  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-  std::string diag_message = "EPAS system powered up";
-  if (system_error_diagnostics_.epas_pwr_error) {
-    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-    diag_message = "EPAS power error detected";
-  }
-  stat.summary(diag_level, diag_message);
-}
-void LeoVcuDriver::checkSBWPowerError(diagnostic_updater::DiagnosticStatusWrapper & stat)
-{
-  stat.add("sbw_pwr_error", system_error_diagnostics_.sbw_pwr_error);
-  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-  std::string diag_message = "SBW system powered up";
-  if (system_error_diagnostics_.sbw_pwr_error) {
-    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-    diag_message = "SBW power error detected";
-  }
-  stat.summary(diag_level, diag_message);
-}
-void LeoVcuDriver::checkBBWPowerError(diagnostic_updater::DiagnosticStatusWrapper & stat)
-{
-  stat.add("bbw_pwr_error", system_error_diagnostics_.bbw_pwr_error);
-  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-  std::string diag_message = "BBW system powered up";
-  if (system_error_diagnostics_.bbw_pwr_error) {
-    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-    diag_message = "BBW power error deteced";
-  }
-  stat.summary(diag_level, diag_message);
-}
-void LeoVcuDriver::checkPCTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat)
-{
-  stat.add("pc_timeout", system_error_diagnostics_.pc_timeout);
-  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-  std::string diag_message = "PC communication works as expected";
-  if (system_error_diagnostics_.pc_timeout) {
-    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-    diag_message = "PC timeout";
-  }
-  stat.summary(diag_level, diag_message);
-}
-void LeoVcuDriver::checkBCUTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat)
-{
-  stat.add("bcu_timeout", system_error_diagnostics_.bcu_timeout);
-  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-  std::string diag_message = "Volt BCU communication works as expected";
-  if (system_error_diagnostics_.bcu_timeout) {
-    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-    diag_message = "Volt BCU timeout";
-  }
-  stat.summary(diag_level, diag_message);
-}
-void LeoVcuDriver::checkPDSTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat)
-{
-  stat.add("pds_timeout", system_error_diagnostics_.pds_timeout);
-  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-  std::string diag_message = "LEO PDS communication works as expected";
-  if (system_error_diagnostics_.pds_timeout) {
-    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-    diag_message = "LEO PDS timeout";
-  }
-  stat.summary(diag_level, diag_message);
-}
-void LeoVcuDriver::checkEPASTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat)
-{
-  stat.add("epas_timeout", system_error_diagnostics_.epas_timeout);
-  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-  std::string diag_message = "EPAS communication works as expected";
-  if (system_error_diagnostics_.epas_timeout) {
-    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-    diag_message = "EPAS timeout";
-  }
-  stat.summary(diag_level, diag_message);
-}
-void LeoVcuDriver::checkBBWTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat)
-{
-  stat.add("bbw_timeout", system_error_diagnostics_.bbw_timeout);
-  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-  std::string diag_message = "BBW communication works as expected";
-  if (system_error_diagnostics_.bbw_timeout) {
-    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-    diag_message = "BBW timeout";
-  }
-  stat.summary(diag_level, diag_message);
-}
 
 void LeoVcuDriver::onAutowareState(const autoware_auto_system_msgs::msg::AutowareState::SharedPtr message)
 {
@@ -908,63 +781,76 @@ void LeoVcuDriver::receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg) {
   }
 }
 
-void LeoVcuDriver::mechanical_error_check() {
+// TODO(ismet): update error bit check mechanism
+void LeoVcuDriver::mechanical_error_check(SystemError & latest_system_error) {
     error_str.data = std::bitset<8>(llc_to_comp_data_.err_msg.mechanical_errors).to_string();
     for (size_t i = 0; i < error_str.data.size(); i++) {
         if (error_str.data.at(i) == '1') {
             switch (i) {
                 case 6:
                     RCLCPP_ERROR(this->get_logger(), "isMotorRunning Error.");
+                    latest_system_error.motor_running_error = true;
                     break;
                 case 7:
-                    RCLCPP_ERROR(this->get_logger(), "K175 error.");
+                    RCLCPP_ERROR(this->get_logger(), "Kl75 error.");
+                    latest_system_error.kl75_error = true;
                     break;
                 default:
-                    RCLCPP_ERROR(this->get_logger(), "Invalid mehcanical error message.");
+                    RCLCPP_ERROR(this->get_logger(), "Invalid mechanical error message.");
                     break;
             }
         }
     }
     llc_error_pub_->publish(error_str);
 }
-
-void LeoVcuDriver::electrical_error_check() {
+void LeoVcuDriver::electrical_error_check(SystemError & latest_system_error) {
     error_str.data = std::bitset<16>(llc_to_comp_data_.err_msg.electrical_errors).to_string();
     for (size_t i = 0; i < error_str.data.size(); i++) {
         if (error_str.data.at(i) == '1') {
             switch (i) {
                 case 5:
                     RCLCPP_ERROR(this->get_logger(), "PDS_HearBeatError");
+                    latest_system_error.pds_timeout_error = true;
                     break;
                 case 6:
                     RCLCPP_ERROR(this->get_logger(), "PDS_BusError");
+                    latest_system_error.pds_bus_error = true;
                     break;
                 case 7:
                     RCLCPP_ERROR(this->get_logger(), "By_WirePowerError");
+                    latest_system_error.by_wire_power_error = true;
                     break;
                 case 8:
                     RCLCPP_ERROR(this->get_logger(), "EPASPowerError");
+                    latest_system_error.epas_power_error = true;
                     break;
                 case 9:
                     RCLCPP_ERROR(this->get_logger(), "BrakePowerError");
+                    latest_system_error.brake_power_error = true;
                     break;
                 case 10:
                     RCLCPP_ERROR(this->get_logger(), "Throttle_ECU_HeartBeatError");
+                    latest_system_error.throttle_ecu_timeout_error = true;
                     break;
                 case 11:
                     RCLCPP_ERROR(this->get_logger(), "G29_HeartBeatEror");
+                    latest_system_error.g29_timeout_error = true;
                     break;
                 case 12:
                     RCLCPP_ERROR(this->get_logger(), "EPAS_SystemError");
+                    latest_system_error.epas_system_error = true;
                     break;
                 case 13:
                     RCLCPP_ERROR(this->get_logger(), "Brake_SystemError");
+                    latest_system_error.brake_system_error = true;
                     break;
                 case 14:
                     RCLCPP_ERROR(this->get_logger(), "Brake_HeartBeatError");
+                    latest_system_error.brake_timeout_error = true;
                     break;
                 case 15:
                     RCLCPP_ERROR(this->get_logger(), "PC_HeartBeatError");
+                    latest_system_error.pc_timeout_error = true;
                     break;
                 default:
                     RCLCPP_ERROR(this->get_logger(), "Invalid error message.");
@@ -973,4 +859,159 @@ void LeoVcuDriver::electrical_error_check() {
         }
     }
     llc_error_pub_->publish(error_str);
+}
+
+void LeoVcuDriver::checkMotorRunningError(diagnostic_updater::DiagnosticStatusWrapper & stat)
+{
+    stat.add("motor_running_error", system_error_diagnostics_.motor_running_error);
+    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+    std::string diag_message = "Motor Running system works as expected";
+    if (system_error_diagnostics_.motor_running_error) {
+        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+        diag_message = "Motor running error detected";
+    }
+    stat.summary(diag_level, diag_message);
+}
+void LeoVcuDriver::checkKl75Error(diagnostic_updater::DiagnosticStatusWrapper & stat)
+{
+    stat.add("kl75_error", system_error_diagnostics_.kl75_error);
+    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+    std::string diag_message = "Kl75 works as expected";
+    if (system_error_diagnostics_.kl75_error) {
+        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+        diag_message = "Kl75 error detected";
+    }
+    stat.summary(diag_level, diag_message);
+}
+void LeoVcuDriver::checkPDSTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat)
+{
+    stat.add("pds_timeout_error", system_error_diagnostics_.pds_timeout_error);
+    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+    std::string diag_message = "PDS communication works as expected";
+    if (system_error_diagnostics_.pds_timeout_error) {
+        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+        diag_message = "PDS timeout error detected";
+    }
+    stat.summary(diag_level, diag_message);
+}
+void LeoVcuDriver::checkPDSBusError(diagnostic_updater::DiagnosticStatusWrapper & stat)
+{
+    stat.add("pds_bus_error", system_error_diagnostics_.pds_bus_error);
+    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+    std::string diag_message = "PDS bus works as expected";
+    if (system_error_diagnostics_.pds_bus_error) {
+        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+        diag_message = "PDS bus error detected";
+    }
+    stat.summary(diag_level, diag_message);
+}
+void LeoVcuDriver::checkByWireError(diagnostic_updater::DiagnosticStatusWrapper & stat)
+{
+    stat.add("by_wire_power_error", system_error_diagnostics_.by_wire_power_error);
+    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+    std::string diag_message = "By wire system powered up";
+    if (system_error_diagnostics_.by_wire_power_error) {
+        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+        diag_message = "By wire system power error detected";
+    }
+    stat.summary(diag_level, diag_message);
+}
+void LeoVcuDriver::checkEPASPowerError(diagnostic_updater::DiagnosticStatusWrapper & stat)
+{
+    stat.add("epas_power_error", system_error_diagnostics_.epas_power_error);
+    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+    std::string diag_message = "EPAS system powered up";
+    if (system_error_diagnostics_.epas_power_error) {
+        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+        diag_message = "EPAS power error detected";
+    }
+    stat.summary(diag_level, diag_message);
+}
+void LeoVcuDriver::checkBrakePowerError(diagnostic_updater::DiagnosticStatusWrapper & stat)
+{
+    stat.add("brake_power_error", system_error_diagnostics_.brake_power_error);
+    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+    std::string diag_message = "Brake system powered up";
+    if (system_error_diagnostics_.brake_power_error) {
+        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+        diag_message = "Brake system power error deteced";
+    }
+    stat.summary(diag_level, diag_message);
+}
+void LeoVcuDriver::checkThrottleTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat)
+{
+    stat.add("throttle_ecu_timeout_error", system_error_diagnostics_.throttle_ecu_timeout_error);
+    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+    std::string diag_message = "Throttle-ECU system communication works as expected";
+    if (system_error_diagnostics_.throttle_ecu_timeout_error) {
+        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+        diag_message = "Throttle-ECU system timeout error detected";
+    }
+    stat.summary(diag_level, diag_message);
+}
+void LeoVcuDriver::checkG29TimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat)
+{
+    stat.add("g29_timeout_error", system_error_diagnostics_.g29_timeout_error);
+    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+    std::string diag_message = "G29 communication works as expected";
+    if (system_error_diagnostics_.g29_timeout_error) {
+        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+        diag_message = "G29 timeout error detected";
+    }
+    stat.summary(diag_level, diag_message);
+}
+void LeoVcuDriver::checkEPASSystemError(diagnostic_updater::DiagnosticStatusWrapper & stat)
+{
+    stat.add("epas_system_error", system_error_diagnostics_.epas_system_error);
+    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+    std::string diag_message = "EPAS system works as expected";
+    if (system_error_diagnostics_.epas_system_error) {
+        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+        diag_message = "EPAS system error detected";
+    }
+    stat.summary(diag_level, diag_message);
+}
+void LeoVcuDriver::checkEPASTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat)
+{
+    stat.add("epas_timeout_error", system_error_diagnostics_.epas_timeout_error);
+    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+    std::string diag_message = "EPAS communication works as expected";
+    if (system_error_diagnostics_.epas_timeout_error) {
+        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+        diag_message = "EPAS timeout error detected";
+    }
+    stat.summary(diag_level, diag_message);
+}
+void LeoVcuDriver::checkBrakeSystemError(diagnostic_updater::DiagnosticStatusWrapper & stat)
+{
+    stat.add("brake_system_error", system_error_diagnostics_.brake_system_error);
+    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+    std::string diag_message = "Brake system works as expected";
+    if (system_error_diagnostics_.brake_system_error) {
+        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+        diag_message = "Brake system error detected";
+    }
+    stat.summary(diag_level, diag_message);
+}
+void LeoVcuDriver::checkBrakeTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat)
+{
+    stat.add("brake_timeout_error", system_error_diagnostics_.brake_timeout_error);
+    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+    std::string diag_message = "Brake communication system works as expected";
+    if (system_error_diagnostics_.brake_timeout_error) {
+        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+        diag_message = "Brake system timeout error detected";
+    }
+    stat.summary(diag_level, diag_message);
+}
+void LeoVcuDriver::checkPCTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat)
+{
+    stat.add("pc_timeout_error", system_error_diagnostics_.pc_timeout_error);
+    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+    std::string diag_message = "PC communication system works as expected";
+    if (system_error_diagnostics_.pc_timeout_error) {
+        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+        diag_message = "PC system timeout error detected";
+    }
+    stat.summary(diag_level, diag_message);
 }

@@ -210,56 +210,63 @@ public:
   void onAutowareState(const autoware_auto_system_msgs::msg::AutowareState::SharedPtr message);
 
 private:
-  std::vector<uint8_t> receive_buffer_;
-
   /**
-   * @brief This function updates PDS system error with latest updates
+   * @brief This function updates Motor Running system error with latest updates
    */
-  void checkPDSSystemError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+  void checkMotorRunningError(diagnostic_updater::DiagnosticStatusWrapper & stat);
   /**
-   * @brief This function updates BBW system error with latest updates
+   * @brief This function updates Kl75 error with latest updates
    */
-  void checkBBWSystemError(diagnostic_updater::DiagnosticStatusWrapper & stat);
-  /**
-   * @brief This function updates EPAS system error with latest updates
-   */
-  void checkEPASSystemError(diagnostic_updater::DiagnosticStatusWrapper & stat);
-  /**
-   * @brief This function updates PC Ignition error with latest updates
-   */
-  void checkPCIgnitionError(diagnostic_updater::DiagnosticStatusWrapper & stat);
-  /**
-   * @brief This function updates EPAS power error with latest updates
-   */
-  void checkEPASPowerError(diagnostic_updater::DiagnosticStatusWrapper & stat);
-  /**
-   * @brief This function updates SBW power error with latest updates
-   */
-  void checkSBWPowerError(diagnostic_updater::DiagnosticStatusWrapper & stat);
-  /**
-   * @brief This function updates BBW power error with latest updates
-   */
-  void checkBBWPowerError(diagnostic_updater::DiagnosticStatusWrapper & stat);
-  /**
-   * @brief This function updates PC timeout error with latest updates
-   */
-  void checkPCTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat);
-  /**
-   * @brief This function updates BCU timeout error with latest updates
-   */
-  void checkBCUTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+  void checkKl75Error(diagnostic_updater::DiagnosticStatusWrapper & stat);
   /**
    * @brief This function updates PDS timeout error with latest updates
    */
   void checkPDSTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat);
   /**
+   * @brief This function updates PDS bus error with latest updates
+   */
+  void checkPDSBusError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+  /**
+   * @brief This function updates BY Wire system error with latest updates
+   */
+  void checkByWireError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+  /**
+   * @brief This function updates EPAS power error with latest updates
+   */
+  void checkEPASPowerError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+  /**
+   * @brief This function updates Brake power error with latest updates
+   */
+  void checkBrakePowerError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+  /**
+   * @brief This function updates Throttle-ecu timeout error with latest updates
+   */
+  void checkThrottleTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+  /**
+   * @brief This function updates G29 timeout error with latest updates
+   */
+  void checkG29TimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+  /**
+   * @brief This function updates EPAS system error with latest updates
+   */
+  void checkEPASSystemError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+  /**
    * @brief This function updates EPAS timeout error with latest updates
    */
   void checkEPASTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat);
   /**
-   * @brief This function updates BBW timeout error with latest updates
+   * @brief This function updates Brake System error with latest updates
    */
-  void checkBBWTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+  void checkBrakeSystemError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+  /**
+   * @brief This function updates Brake timeout error with latest updates
+   */
+  void checkBrakeTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+  /**
+   * @brief This function updates PC timeout error with latest updates
+   */
+  void checkPCTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
   /* input values */
 
   // From Autoware
@@ -367,18 +374,20 @@ private:
   // Define a struct to store autonomous system faults
   struct SystemError
   {
-    bool pds_system_error = false;
-    bool bbw_system_error = false;
+    bool motor_running_error = false;
+    bool kl75_error = false;
+    bool pds_timeout_error = false;
+    bool pds_bus_error = false;
+    bool by_wire_power_error = false;
+    bool epas_power_error = false;
+    bool brake_power_error = false;
+    bool throttle_ecu_timeout_error = false;
+    bool g29_timeout_error = false;
     bool epas_system_error = false;
-    bool pc_ignition_error = false;
-    bool epas_pwr_error = false;
-    bool sbw_pwr_error = false;
-    bool bbw_pwr_error = false;
-    bool pc_timeout = false;
-    bool bcu_timeout = false;
-    bool pds_timeout = false;
-    bool epas_timeout = false;
-    bool bbw_timeout = false;
+    bool epas_timeout_error = false;
+    bool brake_system_error = false;
+    bool brake_timeout_error = false;
+    bool pc_timeout_error = false;
   };
 
   SystemError system_error_diagnostics_;
@@ -402,8 +411,8 @@ private:
 
   void receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg);
   void sendCanFrame();
-  void mechanical_error_check();
-  void electrical_error_check();
+  void mechanical_error_check(SystemError & latest_system_error);
+  void electrical_error_check(SystemError & latest_system_error);
 
   LlcToCompData llc_to_comp_data_ {};
   CompToLlcCmd comp_to_llc_cmd {};
