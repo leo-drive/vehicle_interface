@@ -295,6 +295,8 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
         electrical_error_check(latest_system_error);
       }
       break;
+    case 1024: case 1025: case 1026: case 1027: // sending frame ids
+      break;
     default:
       RCLCPP_ERROR(this->get_logger(), "Invalid CanId\n");
       break;
@@ -785,8 +787,10 @@ void LeoVcuDriver::receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg) {
 void LeoVcuDriver::mechanical_error_check(SystemError & latest_system_error) {
     error_str.data = std::bitset<8>(llc_to_comp_data_.err_msg.mechanical_errors).to_string();
     for (size_t i = 0; i < error_str.data.size(); i++) {
-        if (error_str.data.at(i) == '1') {
+        if (error_str.data.at(i) == '0') {
             switch (i) {
+                case 0: case 1: case 2: case 3: case 4: case 5: // ignore bits
+                    break;
                 case 6:
                     RCLCPP_ERROR(this->get_logger(), "isMotorRunning Error.");
                     latest_system_error.motor_running_error = true;
@@ -808,37 +812,41 @@ void LeoVcuDriver::electrical_error_check(SystemError & latest_system_error) {
     for (size_t i = 0; i < error_str.data.size(); i++) {
         if (error_str.data.at(i) == '1') {
             switch (i) {
-                case 5:
+                case 4:
                     RCLCPP_ERROR(this->get_logger(), "PDS_HearBeatError");
                     latest_system_error.pds_timeout_error = true;
                     break;
-                case 6:
+                case 5:
                     RCLCPP_ERROR(this->get_logger(), "PDS_BusError");
                     latest_system_error.pds_bus_error = true;
                     break;
-                case 7:
+                case 6:
                     RCLCPP_ERROR(this->get_logger(), "By_WirePowerError");
                     latest_system_error.by_wire_power_error = true;
                     break;
-                case 8:
+                case 7:
                     RCLCPP_ERROR(this->get_logger(), "EPASPowerError");
                     latest_system_error.epas_power_error = true;
                     break;
-                case 9:
+                case 8:
                     RCLCPP_ERROR(this->get_logger(), "BrakePowerError");
                     latest_system_error.brake_power_error = true;
                     break;
-                case 10:
+                case 9:
                     RCLCPP_ERROR(this->get_logger(), "Throttle_ECU_HeartBeatError");
                     latest_system_error.throttle_ecu_timeout_error = true;
                     break;
-                case 11:
+                case 10:
                     RCLCPP_ERROR(this->get_logger(), "G29_HeartBeatEror");
                     latest_system_error.g29_timeout_error = true;
                     break;
-                case 12:
+                case 11:
                     RCLCPP_ERROR(this->get_logger(), "EPAS_SystemError");
                     latest_system_error.epas_system_error = true;
+                    break;
+                case 12:
+                    RCLCPP_ERROR(this->get_logger(), "EPAS_HeartBeatError");
+                    latest_system_error.epas_timeout_error = true;
                     break;
                 case 13:
                     RCLCPP_ERROR(this->get_logger(), "Brake_SystemError");

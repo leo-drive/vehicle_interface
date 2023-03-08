@@ -405,7 +405,6 @@ private:
   //can testing codes
 
   can_msgs::msg::Frame::SharedPtr msg_recv_can_frame_;
-  can_msgs::msg::Frame msg_send_can_frame_;
   rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr sub_recv_frame_;
   rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr pub_send_frame_;
 
