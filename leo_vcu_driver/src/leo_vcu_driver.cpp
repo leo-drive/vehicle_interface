@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #include <leo_vcu_driver/leo_vcu_driver.hpp>
 
 #include <algorithm>
@@ -57,6 +55,7 @@ LeoVcuDriver::LeoVcuDriver()
   soft_stop_acceleration = static_cast<float>(declare_parameter("soft_stop_acceleration", -1.5));
   add_emergency_acceleration_per_second =
     static_cast<float>(declare_parameter("add_emergency_acceleration_per_second", -0.5));
+  enable_long_actuation_mode = declare_parameter("enable_long_actuation_mode", false);
 
   /* Subscribers */
 
@@ -88,6 +87,9 @@ LeoVcuDriver::LeoVcuDriver()
       std::bind(&LeoVcuDriver::onHazardStatusStamped, this, _1));
   autoware_state_sub_ = create_subscription<autoware_auto_system_msgs::msg::AutowareState>(
     "/autoware/state", rclcpp::QoS(1), std::bind(&LeoVcuDriver::onAutowareState, this, _1));
+  actuation_cmd_sub_ = create_subscription<tier4_vehicle_msgs::msg::ActuationCommandStamped>(
+    "/control/command/actuation_cmd", rclcpp::QoS(1),
+    std::bind(&LeoVcuDriver::actuator_cmd_callback, this, _1));
 
   /* hand_brake_sub_ = create_subscription<autoware_auto_vehicle_msgs::msg::HandBrakeCommand>(
           "/yatopicyok", rclcpp::QoS{1},
@@ -211,6 +213,12 @@ void LeoVcuDriver::gate_mode_cmd_callback(
   gate_mode_cmd_ptr = msg;  // AUTO = 0, EXTERNAL = 1
 }
 
+void LeoVcuDriver::actuator_cmd_callback(
+  const tier4_vehicle_msgs::msg::ActuationCommandStamped::ConstSharedPtr msg)
+{
+  actuation_cmd_ptr = msg;
+}
+
   /* void LeoVcuDriver::hand_brake_cmd_callback(
           const autoware_auto_vehicle_msgs::msg::HandBrakeCommand::ConstSharedPtr msg)
   {
@@ -323,16 +331,20 @@ void LeoVcuDriver::autoware_to_llc_msg_adapter()
   comp_to_llc_cmd.long_msg_v1.set_long_accel = control_cmd_ptr_->longitudinal.acceleration;
   comp_to_llc_cmd.long_msg_v1.set_limit_velocity = control_cmd_ptr_->longitudinal.speed;
 
-  // TODO(ismet): update algorithm for following commands
+  // set headlight and wiper
   comp_to_llc_cmd.vehicle_signal_cmd.headlight = 0;
   comp_to_llc_cmd.vehicle_signal_cmd.wiper = 0;
-  comp_to_llc_cmd.vehicle_signal_cmd.long_mode = 0;
 
-  comp_to_llc_cmd.long_msg_v2.set_gas_pedal_pos = 0.0;
-  // static_cast<float>(raw_control_cmd_ptr->throttle) / 100;
-  comp_to_llc_cmd.long_msg_v2.set_brake_pedal_pos = 0.0;
-  // static_cast<float>(raw_control_cmd_ptr->brake) / 100;
-
+  comp_to_llc_cmd.vehicle_signal_cmd.long_mode = enable_long_actuation_mode ? 1 : 0;
+  if (enable_long_actuation_mode) {
+    comp_to_llc_cmd.vehicle_signal_cmd.long_mode = 1;
+    comp_to_llc_cmd.long_msg_v2.set_gas_pedal_pos = actuation_cmd_ptr->actuation.accel_cmd;
+    comp_to_llc_cmd.long_msg_v2.set_brake_pedal_pos = actuation_cmd_ptr->actuation.brake_cmd;
+  } else {
+    comp_to_llc_cmd.vehicle_signal_cmd.long_mode = 0;
+    comp_to_llc_cmd.long_msg_v2.set_gas_pedal_pos = 0.0;
+    comp_to_llc_cmd.long_msg_v2.set_brake_pedal_pos = 0.0;
+  }
 
   // TODO(ismet): update transform algorithm (tire -> wheel) for golf
   comp_to_llc_cmd.front_wheel_cmd_msg.set_front_wheel_angle_rad =
@@ -696,6 +708,12 @@ bool LeoVcuDriver::autoware_data_ready()
   if (!gate_mode_cmd_ptr) {
     RCLCPP_WARN_THROTTLE(get_logger(), clock, 1000, "waiting for gate_mode_cmd ...");
     output = false;
+  }
+  if (enable_long_actuation_mode) {
+    if (!actuation_cmd_ptr) {
+      RCLCPP_WARN_THROTTLE(get_logger(), clock, 1000, "waiting for actuation_mode_cmd ...");
+      output = false;
+    }
   }
 
   return output;

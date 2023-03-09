@@ -15,3 +15,4 @@
     add_emergency_acceleration_per_second: -1.5
     enable_cmd_timeout_emergency: true
     steering_offset: 0.001
+    enable_long_actuation_mode: false

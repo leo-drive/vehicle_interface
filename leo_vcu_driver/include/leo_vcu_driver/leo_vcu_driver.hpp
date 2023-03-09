@@ -78,7 +78,7 @@ class LeoVcuDriver : public rclcpp::Node
 {
 public:
   LeoVcuDriver();
-  ~LeoVcuDriver() override { /*;serial->close();*/ }
+  ~LeoVcuDriver() override { }
 
   /**
    * @brief It checks the autoware data is ready or not.
@@ -206,6 +206,11 @@ public:
     const autoware_auto_system_msgs::msg::HazardStatusStamped::ConstSharedPtr msg);
 
   void onAutowareState(const autoware_auto_system_msgs::msg::AutowareState::SharedPtr message);
+  /**
+   * @brief It is callback function which takes data from "/control/command/actuation_cmd" topic in
+   * Autoware Universe.
+   */
+  void actuator_cmd_callback(const tier4_vehicle_msgs::msg::ActuationCommandStamped::ConstSharedPtr msg);
 
 private:
   /**
@@ -275,6 +280,8 @@ private:
   autoware_auto_vehicle_msgs::msg::GearCommand::ConstSharedPtr gear_cmd_ptr_;
   tier4_vehicle_msgs::msg::VehicleEmergencyStamped::ConstSharedPtr emergency_cmd_ptr;
   tier4_control_msgs::msg::GateMode::ConstSharedPtr gate_mode_cmd_ptr;
+  tier4_vehicle_msgs::msg::ActuationCommandStamped::ConstSharedPtr actuation_cmd_ptr;
+
   /*
   autoware_auto_vehicle_msgs::msg::HandBrakeCommand::ConstSharedPtr hand_brake_cmd_ptr;
   autoware_auto_vehicle_msgs::msg::HeadlightsCommand::ConstSharedPtr head_lights_cmd_ptr;
@@ -315,11 +322,11 @@ private:
   rclcpp::Subscription<autoware_auto_system_msgs::msg::HazardStatusStamped>::SharedPtr
     sub_hazard_status_stamped_;
   rclcpp::Subscription<autoware_auto_system_msgs::msg::AutowareState>::ConstSharedPtr autoware_state_sub_;
+  rclcpp::Subscription<tier4_vehicle_msgs::msg::ActuationCommandStamped>::ConstSharedPtr actuation_cmd_sub_;
   // mehce added starts
   rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::HandBrakeCommand>::SharedPtr hand_brake_sub_;
   rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::HeadlightsCommand>::SharedPtr headlights_sub_;
-  rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::RawControlCommand>::SharedPtr
-    raw_control_cmd_sub_;
+  rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::RawControlCommand>::SharedPtr raw_control_cmd_sub_;
   // mehce added ends
 
   /* publishers */
@@ -364,6 +371,7 @@ private:
   float emergency_stop_acceleration{};
   float soft_stop_acceleration{};         // [m/s^2]
   float add_emergency_acceleration_per_second{};
+  bool enable_long_actuation_mode{};
 
   // Diagnostic Updater Object
   diagnostic_updater::Updater updater_;
@@ -407,7 +415,6 @@ private:
   rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr pub_send_frame_;
 
   void receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg);
-  void sendCanFrame();
   void mechanical_error_check(SystemError & latest_system_error);
   void electrical_error_check(SystemError & latest_system_error);
 
