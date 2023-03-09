@@ -1,4 +1,4 @@
-// Copyright 2022 Leo Drive Teknoloji A.Ş.
+// Copyright 2023 Leo Drive Teknoloji A.Ş.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -68,8 +68,6 @@
 #include <tier4_vehicle_msgs/msg/vehicle_emergency_stamped.hpp>
 
 #include <can_msgs/msg/frame.hpp>
-//#include <leo_vcu_driver/AsyncSerial.h>
-#include <leo_vcu_driver/checksum.h>
 #include <leo_vcu_driver/vehicle_interface.h>
 #include <linux/can.h>
 #include <bitset>
@@ -277,11 +275,11 @@ private:
   autoware_auto_vehicle_msgs::msg::GearCommand::ConstSharedPtr gear_cmd_ptr_;
   tier4_vehicle_msgs::msg::VehicleEmergencyStamped::ConstSharedPtr emergency_cmd_ptr;
   tier4_control_msgs::msg::GateMode::ConstSharedPtr gate_mode_cmd_ptr;
-  //mehce added starts
+  /*
   autoware_auto_vehicle_msgs::msg::HandBrakeCommand::ConstSharedPtr hand_brake_cmd_ptr;
   autoware_auto_vehicle_msgs::msg::HeadlightsCommand::ConstSharedPtr head_lights_cmd_ptr;
   autoware_auto_vehicle_msgs::msg::RawControlCommand::ConstSharedPtr raw_control_cmd_ptr;
-  //mehce added ends
+   */
   bool engage_cmd_{0};
 
   /* Variables */
@@ -362,7 +360,6 @@ private:
   bool check_steering_angle_rate{};
   bool enable_emergency{};
   bool enable_cmd_timeout_emergency{};
-  bool enable_debugger{};
   float steering_offset{0.0};
   float emergency_stop_acceleration{};
   float soft_stop_acceleration{};         // [m/s^2]
@@ -391,6 +388,7 @@ private:
   };
 
   SystemError system_error_diagnostics_;
+  // TODO(ismet): update w/bayram
   std::vector<float> wheel_angle_{-700.0, -650.0, -600.0, -550.0, -500.0, -450.0, -350.0, -250.0,
                                   -150.0, -50.0,  -25.0,  -10.0,  10.0,   25.0,   50.0,   150.0,
                                   250.0,  350.0,  450.0,  500.0,  550.0,  600.0,  650.0,  700.0};

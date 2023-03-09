@@ -1,4 +1,4 @@
-// Copyright 2022 Leo Drive Teknoloji A.Ş.
+// Copyright 2023 Leo Drive Teknoloji A.Ş.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,23 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// \copyright Copyright 2022 Leo Drive Teknoloji A.Ş.
+/// \copyright Copyright 2023 Leo Drive Teknoloji A.Ş.
 /// \file
 /// \brief This file defines the vehicle_interface class.
 #ifndef BUILD_VEHICLE_INTERFACE_H
 #define BUILD_VEHICLE_INTERFACE_H
 
 #include <cstdint>
-#include "checksum.h"
-
 
 using namespace std;
-
-const uint8_t comp_to_llc_msg_frame_id {16U};
-const uint8_t comp_to_llc_msg_eof_id {17U};
-
-const uint8_t llc_to_comp_msg_frame_id {99U};
-const uint8_t llc_to_comp_msg_eof_id {100U};
 
 // added for universe
 struct vehicle_current_state_
@@ -45,6 +37,7 @@ struct vehicle_current_state_
   char * debug_str_last {};
 };
 
+// TODO(ismet): check which status is required and update it
 struct StateReport_
 {
   uint8_t fuel;

@@ -15,7 +15,6 @@ endif()
 ament_auto_add_executable(leo_vcu_driver
         src/leo_vcu_driver_node.cpp
         src/leo_vcu_driver.cpp
-        src/AsyncSerial.cpp
         )
 
 if(BUILD_TESTING)

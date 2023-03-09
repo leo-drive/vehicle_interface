@@ -51,7 +51,6 @@ LeoVcuDriver::LeoVcuDriver()
   check_steering_angle_rate = declare_parameter("check_steering_angle_rate", true);
   enable_emergency = declare_parameter("enable_emergency", true);
   enable_cmd_timeout_emergency = declare_parameter("enable_cmd_timeout_emergency", true);
-  enable_debugger = declare_parameter("enable_debugger", true);
   steering_offset = static_cast<float>(declare_parameter("steering_offset", 0.0));
   emergency_stop_acceleration =
     static_cast<float>(declare_parameter("emergency_stop_acceleration", -5.0));
@@ -164,11 +163,6 @@ void LeoVcuDriver::ctrl_cmd_callback(
 {
   control_command_received_time_ = this->now();
   control_cmd_ptr_ = msg;
-  if(enable_debugger){
-    RCLCPP_INFO(
-      get_logger(), "target steering degree: %f",
-      control_cmd_ptr_->lateral.steering_tire_angle * 180.0 / M_PI);
-  }
 }
 
 void LeoVcuDriver::onEmergencyState(
@@ -246,7 +240,7 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
           static_cast<float>(llc_to_comp_data_.vehicle_dyn_info_.linear_veh_velocity);
         current_state.steering_wheel_status_msg.data =
           static_cast<float>(llc_to_comp_data_.vehicle_dyn_info_.steering_wheel_angle);
-        // TODO(ismet): update algorithm for golf vehicle
+        // TODO(ismet): update algorithm for golf vehicle w/ bayram
         current_state.steering_tire_status_msg.steering_tire_angle =
           steering_wheel_to_steering_tire_angle(current_state.steering_wheel_status_msg.data);
       }

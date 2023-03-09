@@ -1,7 +1,0 @@
-
-
-
-
-SUBSYSTEM=="tty", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="5740", ATTRS{product}=="Low-Level Controller", ATTRS{manufacturer}=="STMicroelectronics" , SYMLINK+="ttyLLC"
-
-
