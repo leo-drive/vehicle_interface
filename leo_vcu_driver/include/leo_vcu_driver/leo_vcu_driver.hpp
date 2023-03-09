@@ -66,6 +66,7 @@
 
 #include <tier4_vehicle_msgs/msg/steering_wheel_status_stamped.hpp>
 #include <tier4_vehicle_msgs/msg/vehicle_emergency_stamped.hpp>
+#include <leo_vcu_msgs/msg/state_report.hpp>
 
 #include <can_msgs/msg/frame.hpp>
 #include <leo_vcu_driver/vehicle_interface.h>
@@ -123,6 +124,27 @@ public:
    * Autoware Universe.
    */
   void gate_mode_cmd_callback(const tier4_control_msgs::msg::GateMode::ConstSharedPtr msg);
+  /**
+   * @brief It is callback function which takes data from "/system/emergency/emergency_state" topic
+   * from Autoware Universe.
+   */
+  void onEmergencyState(autoware_auto_system_msgs::msg::EmergencyState::ConstSharedPtr msg);
+  /**
+   * @brief It is callback function which takes data from "/system/emergency/hazard_status" topic
+   * from Autoware Universe.
+   */
+  void onHazardStatusStamped(
+    const autoware_auto_system_msgs::msg::HazardStatusStamped::ConstSharedPtr msg);
+  /**
+   * @brief It is callback function which takes data from "/autoware/state" topic from
+   * Autoware Universe.
+   */
+  void onAutowareState(const autoware_auto_system_msgs::msg::AutowareState::SharedPtr message);
+  /**
+   * @brief It is callback function which takes data from "/control/command/actuation_cmd" topic in
+   * Autoware Universe.
+   */
+  void actuator_cmd_callback(const tier4_vehicle_msgs::msg::ActuationCommandStamped::ConstSharedPtr msg);
    // mehce added starts
    /**
    * @brief It is callback function which takes data from "/" topic from Autoware Universe
@@ -198,20 +220,10 @@ public:
    */
   void autoware_to_llc_msg_adapter();
   /**
-   * @brief Check the emergency state of autoware
+   * @brief It is the meta converter function that takes all data from LLC and convert them to
+   * leo_vcu_msgs which are ROS2 msg type.
    */
-  void onEmergencyState(autoware_auto_system_msgs::msg::EmergencyState::ConstSharedPtr msg);
-
-  void onHazardStatusStamped(
-    const autoware_auto_system_msgs::msg::HazardStatusStamped::ConstSharedPtr msg);
-
-  void onAutowareState(const autoware_auto_system_msgs::msg::AutowareState::SharedPtr message);
-  /**
-   * @brief It is callback function which takes data from "/control/command/actuation_cmd" topic in
-   * Autoware Universe.
-   */
-  void actuator_cmd_callback(const tier4_vehicle_msgs::msg::ActuationCommandStamped::ConstSharedPtr msg);
-
+  void llc_to_state_report_msg_adapter();
 private:
   /**
    * @brief This function updates Motor Running system error with latest updates
@@ -281,6 +293,7 @@ private:
   tier4_vehicle_msgs::msg::VehicleEmergencyStamped::ConstSharedPtr emergency_cmd_ptr;
   tier4_control_msgs::msg::GateMode::ConstSharedPtr gate_mode_cmd_ptr;
   tier4_vehicle_msgs::msg::ActuationCommandStamped::ConstSharedPtr actuation_cmd_ptr;
+  leo_vcu_msgs::msg::StateReport vehicle_state_report_msg_;
 
   /*
   autoware_auto_vehicle_msgs::msg::HandBrakeCommand::ConstSharedPtr hand_brake_cmd_ptr;
@@ -347,6 +360,7 @@ private:
   // mehce added starts
   rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::HandBrakeReport>::SharedPtr hand_brake_pub_;
   rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::HeadlightsReport>::SharedPtr headlights_pub_;
+  rclcpp::Publisher<leo_vcu_msgs::msg::StateReport>::SharedPtr vehicle_state_report_pub_;
   // mehce added ends
 
   // Timer

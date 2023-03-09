@@ -37,48 +37,30 @@ struct vehicle_current_state_
   char * debug_str_last {};
 };
 
-// TODO(ismet): check which status is required and update it
-struct StateReport_
-{
-  uint8_t fuel;
-  uint8_t blinker;
-  uint8_t headlight;
-  uint8_t wiper;
-  uint8_t gear;
-  uint8_t mode;
-  uint8_t hand_brake;
-  uint8_t takeover_request;
-  uint8_t intervention;
-  uint8_t ready;
-  uint8_t motion_allow;
-  uint8_t throttle;          // %
-  uint8_t brake;           // %
-  int16_t front_steer;           //degree
-  char debugstr[24];
-};
-
 //can msgs
 struct LlcCanMsg
 {
-    can_msgs::msg::Frame msg_long_cmd_frame_1;
-    can_msgs::msg::Frame msg_long_cmd_frame_2;
-    can_msgs::msg::Frame msg_veh_signal_cmd_frame;
-    can_msgs::msg::Frame msg_front_wheel_cmd_frame;
+  can_msgs::msg::Frame msg_long_cmd_frame_1;
+  can_msgs::msg::Frame msg_long_cmd_frame_2;
+  can_msgs::msg::Frame msg_veh_signal_cmd_frame;
+  can_msgs::msg::Frame msg_front_wheel_cmd_frame;
 };
 
 struct __attribute__((packed)) VehicleErrorsData {
-    uint8_t mechanical_errors;
-    uint16_t electrical_errors;
+  uint8_t mechanical_errors;
+  uint16_t electrical_errors;
 };
 
 struct __attribute__((packed)) MotorInfoData{
   uint8_t temp;
   uint16_t rpm;
-  uint8_t k157;
+  uint8_t kl75;
 };
 
 struct __attribute__((packed)) MotionInfoData{
-  uint8_t intervention;
+  uint8_t steering_intervention;
+  uint8_t brake_intervention;
+  uint8_t acc_pedal_intervention;
   uint8_t ready;
   uint8_t motion_allow;
   uint8_t throttle;
@@ -131,19 +113,18 @@ struct __attribute__((packed)) LongitudinalCommandDataV1{
 };
 
 struct __attribute__((packed)) LlcToCompData {
-    VehicleErrorsData err_msg;
-    MotorInfoData motor_info_msg;
-    MotionInfoData motion_info_;
-    VehicleSignalStatusData vehicle_sgl_status_;
-    VehicleDynamicsInfoData vehicle_dyn_info_;
-    StateReport_ state_report_;
+  VehicleErrorsData err_msg;
+  MotorInfoData motor_info;
+  MotionInfoData motion_info;
+  VehicleSignalStatusData vehicle_sgl_status;
+  VehicleDynamicsInfoData vehicle_dyn_info;
 };
 
 struct __attribute__((packed)) CompToLlcCmd {
-    FrontWheelCommandData front_wheel_cmd_msg;
-    VehicleSignalCommandData vehicle_signal_cmd;
-    LongitudinalCommandDataV1 long_msg_v1;
-    LongitudinalCommandDataV2 long_msg_v2;
+  FrontWheelCommandData front_wheel_cmd_msg;
+  VehicleSignalCommandData vehicle_signal_cmd;
+  LongitudinalCommandDataV1 long_msg_v1;
+  LongitudinalCommandDataV2 long_msg_v2;
 };
 
 

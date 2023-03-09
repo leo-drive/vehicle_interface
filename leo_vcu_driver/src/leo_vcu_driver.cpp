@@ -124,6 +124,8 @@ LeoVcuDriver::LeoVcuDriver()
           "/vehicle/status/hand_brake", rclcpp::QoS{1});
   headlights_pub_ = create_publisher<autoware_auto_vehicle_msgs::msg::HeadlightsReport>(
           "/vehicle/status/headlights", rclcpp::QoS{1});
+  vehicle_state_report_pub_ = create_publisher<leo_vcu_msgs::msg::StateReport>(
+    "/vehicle/status/status_report", rclcpp::QoS{1});
 
   // System error diagnostic
   updater_.setHardwareID("vehicle_error_monitor");
@@ -243,50 +245,49 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
   switch (msg_recv_can_frame_->id) {
     case 1041: // get linear vehicle velocity and front wheel angle
       {
-        std::memcpy(&llc_to_comp_data_.vehicle_dyn_info_, &msg_recv_can_frame_->data, 8);
+        std::memcpy(&llc_to_comp_data_.vehicle_dyn_info, &msg_recv_can_frame_->data, 8);
         current_state.twist.longitudinal_velocity =
-          static_cast<float>(llc_to_comp_data_.vehicle_dyn_info_.linear_veh_velocity);
+          static_cast<float>(llc_to_comp_data_.vehicle_dyn_info.linear_veh_velocity);
         current_state.steering_wheel_status_msg.data =
-          static_cast<float>(llc_to_comp_data_.vehicle_dyn_info_.steering_wheel_angle);
+          static_cast<float>(llc_to_comp_data_.vehicle_dyn_info.steering_wheel_angle);
         // TODO(ismet): update algorithm for golf vehicle w/ bayram
         current_state.steering_tire_status_msg.steering_tire_angle =
           steering_wheel_to_steering_tire_angle(current_state.steering_wheel_status_msg.data);
       }
       break;
-
     case 1042: // fuel, blinker, headlight, wiper, gear, mode, hand_brake and horn publisher
       {
-        std::memcpy(&llc_to_comp_data_.vehicle_sgl_status_, &msg_recv_can_frame_->data, 8);
+        std::memcpy(&llc_to_comp_data_.vehicle_sgl_status, &msg_recv_can_frame_->data, 8);
 
         // set hazard lights status
         indicator_adapter_to_autoware(
-          static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status_.blinker));
+          static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status.blinker));
 
         // set gear status
         current_state.gear_report_msg.report = gear_adapter_to_autoware(
-          static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status_.gear));
+          static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status.gear));
 
         // set control_mode status
         current_state.control_mode_report.mode = control_mode_adapter_to_autoware(
-          static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status_.mode));
+          static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status.mode));
 
         // set headlight status
         current_state.headlight_msg.report = headlight_adapter_to_autoware(
-          static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status_.headlight));
+          static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status.headlight));
 
         // set handbrake status
         current_state.hand_brake_msg.report =
-          static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status_.hand_brake);
+          static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status.hand_brake);
       }
       break;
     case 1043: // intervention, ready, motion_allow, throttle, brake, front_steer
       {
-        std::memcpy(&llc_to_comp_data_.motion_info_, &msg_recv_can_frame_->data, 8);
+        std::memcpy(&llc_to_comp_data_.motion_info, &msg_recv_can_frame_->data, 8);
       }
       break;
     case 1044: // temperature and rpm
       {
-      std::memcpy(&llc_to_comp_data_.motor_info_msg, &msg_recv_can_frame_->data, 8);
+        std::memcpy(&llc_to_comp_data_.motor_info, &msg_recv_can_frame_->data, 8);
       }
       break;
     case 1045: // errors
@@ -303,6 +304,7 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
       RCLCPP_ERROR(this->get_logger(), "Invalid CanId\n");
       break;
   }
+  llc_to_state_report_msg_adapter();
   system_error_diagnostics_ = latest_system_error;
 }
 
@@ -465,6 +467,43 @@ void LeoVcuDriver::gear_adapter_to_llc(const uint8_t & input)
   }
 }
 
+void LeoVcuDriver::llc_to_state_report_msg_adapter()
+{
+  // Update State Report Msg with Vehicle Status
+  vehicle_state_report_msg_.fuel = static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.fuel);
+  vehicle_state_report_msg_.blinker =
+    static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.blinker);
+  vehicle_state_report_msg_.headlight =
+    static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.headlight);
+  vehicle_state_report_msg_.wiper =
+    static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.wiper);
+  vehicle_state_report_msg_.gear = static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.gear);
+  vehicle_state_report_msg_.mode = static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.mode);
+  vehicle_state_report_msg_.hand_brake =
+    static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.hand_brake);
+  vehicle_state_report_msg_.horn = static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.horn);
+
+  // Update State Report Msg with Motion Info
+  vehicle_state_report_msg_.steering_intervention =
+    static_cast<uint8_t>(llc_to_comp_data_.motion_info.steering_intervention);
+  vehicle_state_report_msg_.brake_intervention =
+    static_cast<uint8_t>(llc_to_comp_data_.motion_info.brake_intervention);
+  vehicle_state_report_msg_.acc_pedal_intervention =
+    static_cast<uint8_t>(llc_to_comp_data_.motion_info.acc_pedal_intervention);
+  vehicle_state_report_msg_.ready = static_cast<uint8_t>(llc_to_comp_data_.motion_info.ready);
+  vehicle_state_report_msg_.motion_allow =
+    static_cast<uint8_t>(llc_to_comp_data_.motion_info.motion_allow);
+  vehicle_state_report_msg_.throttle = static_cast<uint8_t>(llc_to_comp_data_.motion_info.throttle);
+  vehicle_state_report_msg_.brake = static_cast<uint8_t>(llc_to_comp_data_.motion_info.brake);
+  vehicle_state_report_msg_.front_steer =
+    static_cast<uint16_t>(llc_to_comp_data_.motion_info.front_steer);
+
+  // Update State Report Msg with Motor Info
+  vehicle_state_report_msg_.motor_temp = static_cast<uint8_t>(llc_to_comp_data_.motor_info.temp);
+  vehicle_state_report_msg_.motor_rpm = static_cast<uint16_t>(llc_to_comp_data_.motor_info.rpm);
+  vehicle_state_report_msg_.kl75 = static_cast<uint8_t>(llc_to_comp_data_.motor_info.kl75);
+}
+
 size_t compare(std::vector<float> & vec, double value)
 {
   double dist = std::numeric_limits<double>::max();
@@ -567,7 +606,6 @@ void LeoVcuDriver::llc_publisher()
   }
 
   autoware_to_llc_msg_adapter();
-  //TODO(ismet): check emergency handling
 
   if (emergency_cmd_ptr->emergency || is_emergency_) {
     if (enable_emergency) {
@@ -677,6 +715,8 @@ void LeoVcuDriver::llc_publisher()
   pub_send_frame_->publish(llc_can_msgs.msg_long_cmd_frame_2);
   pub_send_frame_->publish(llc_can_msgs.msg_veh_signal_cmd_frame);
   pub_send_frame_->publish(llc_can_msgs.msg_front_wheel_cmd_frame);
+
+  vehicle_state_report_pub_->publish(vehicle_state_report_msg_);
 
   updater_.force_update();
 }
@@ -795,7 +835,6 @@ void LeoVcuDriver::receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg) {
   }
 }
 
-// TODO(ismet): update error bit check mechanism
 void LeoVcuDriver::mechanical_error_check(SystemError & latest_system_error) {
     error_str.data = std::bitset<8>(llc_to_comp_data_.err_msg.mechanical_errors).to_string();
     for (size_t i = 0; i < error_str.data.size(); i++) {
