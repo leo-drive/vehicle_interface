@@ -786,12 +786,12 @@ void LeoVcuDriver::mechanical_error_check(SystemError & latest_system_error) {
                 case 0: case 1: case 2: case 3: case 4: case 5: // ignore bits
                     break;
                 case 6:
-                    RCLCPP_ERROR(this->get_logger(), "isMotorRunning Error.");
-                    latest_system_error.motor_running_error = true;
-                    break;
-                case 7:
                     RCLCPP_ERROR(this->get_logger(), "Kl75 error.");
                     latest_system_error.kl75_error = true;
+                    break;
+                case 7:
+                    RCLCPP_ERROR(this->get_logger(), "isMotorRunning Error.");
+                    latest_system_error.motor_running_error = true;
                     break;
                 default:
                     RCLCPP_ERROR(this->get_logger(), "Invalid mechanical error message.");
@@ -807,52 +807,52 @@ void LeoVcuDriver::electrical_error_check(SystemError & latest_system_error) {
         if (error_str.data.at(i) == '1') {
             switch (i) {
                 case 4:
-                    RCLCPP_ERROR(this->get_logger(), "PDS_HearBeatError");
-                    latest_system_error.pds_timeout_error = true;
+                    RCLCPP_ERROR(this->get_logger(), "PC_HeartBeatError");
+                    latest_system_error.pc_timeout_error = true;
                     break;
                 case 5:
-                    RCLCPP_ERROR(this->get_logger(), "PDS_BusError");
-                    latest_system_error.pds_bus_error = true;
-                    break;
-                case 6:
-                    RCLCPP_ERROR(this->get_logger(), "By_WirePowerError");
-                    latest_system_error.by_wire_power_error = true;
-                    break;
-                case 7:
-                    RCLCPP_ERROR(this->get_logger(), "EPASPowerError");
-                    latest_system_error.epas_power_error = true;
-                    break;
-                case 8:
-                    RCLCPP_ERROR(this->get_logger(), "BrakePowerError");
-                    latest_system_error.brake_power_error = true;
-                    break;
-                case 9:
-                    RCLCPP_ERROR(this->get_logger(), "Throttle_ECU_HeartBeatError");
-                    latest_system_error.throttle_ecu_timeout_error = true;
-                    break;
-                case 10:
-                    RCLCPP_ERROR(this->get_logger(), "G29_HeartBeatEror");
-                    latest_system_error.g29_timeout_error = true;
-                    break;
-                case 11:
-                    RCLCPP_ERROR(this->get_logger(), "EPAS_SystemError");
-                    latest_system_error.epas_system_error = true;
-                    break;
-                case 12:
-                    RCLCPP_ERROR(this->get_logger(), "EPAS_HeartBeatError");
-                    latest_system_error.epas_timeout_error = true;
-                    break;
-                case 13:
-                    RCLCPP_ERROR(this->get_logger(), "Brake_SystemError");
-                    latest_system_error.brake_system_error = true;
-                    break;
-                case 14:
                     RCLCPP_ERROR(this->get_logger(), "Brake_HeartBeatError");
                     latest_system_error.brake_timeout_error = true;
                     break;
+                case 6:
+                    RCLCPP_ERROR(this->get_logger(), "Brake_SystemError");
+                    latest_system_error.brake_system_error = true;
+                    break;
+                case 7:
+                    RCLCPP_ERROR(this->get_logger(), "EPAS_HeartBeatError");
+                    latest_system_error.epas_timeout_error = true;
+                    break;
+                case 8:
+                    RCLCPP_ERROR(this->get_logger(), "EPAS_SystemError");
+                    latest_system_error.epas_system_error = true;
+                    break;
+                case 9:
+                    RCLCPP_ERROR(this->get_logger(), "G29_HeartBeatEror");
+                    latest_system_error.g29_timeout_error = true;
+                    break;
+                case 10:
+                    RCLCPP_ERROR(this->get_logger(), "Throttle_ECU_HeartBeatError");
+                    latest_system_error.throttle_ecu_timeout_error = true;
+                    break;
+                case 11:
+                    RCLCPP_ERROR(this->get_logger(), "BrakePowerError");
+                    latest_system_error.brake_power_error = true;
+                    break;
+                case 12:
+                    RCLCPP_ERROR(this->get_logger(), "EPASPowerError");
+                    latest_system_error.epas_power_error = true;
+                    break;
+                case 13:
+                    RCLCPP_ERROR(this->get_logger(), "By_WirePowerError");
+                    latest_system_error.by_wire_power_error = true;
+                    break;
+                case 14:
+                    RCLCPP_ERROR(this->get_logger(), "PDS_BusError");
+                    latest_system_error.pds_bus_error = true;
+                    break;
                 case 15:
-                    RCLCPP_ERROR(this->get_logger(), "PC_HeartBeatError");
-                    latest_system_error.pc_timeout_error = true;
+                    RCLCPP_ERROR(this->get_logger(), "PDS_HearBeatError");
+                    latest_system_error.pds_timeout_error = true;
                     break;
                 default:
                     RCLCPP_ERROR(this->get_logger(), "Invalid error message.");
