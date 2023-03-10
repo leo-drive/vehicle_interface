@@ -70,7 +70,7 @@ LeoVcuDriver::LeoVcuDriver()
       std::bind(&LeoVcuDriver::turn_indicators_cmd_callback, this, _1));
   hazard_lights_cmd_sub_ =
     create_subscription<autoware_auto_vehicle_msgs::msg::HazardLightsCommand>(
-      "/system/emergency/hazard_lights_cmd", rclcpp::QoS{1},
+      "/control/command/hazard_lights_cmd", rclcpp::QoS{1},
       std::bind(&LeoVcuDriver::hazard_lights_cmd_callback, this, _1));
   engage_cmd_sub_ = create_subscription<autoware_auto_vehicle_msgs::msg::Engage>(
     "/autoware/engage", rclcpp::QoS{1}, std::bind(&LeoVcuDriver::engage_cmd_callback, this, _1));
@@ -245,7 +245,8 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
   switch (msg_recv_can_frame_->id) {
     case 1041: // get linear vehicle velocity and front wheel angle
       {
-        std::memcpy(&llc_to_comp_data_.vehicle_dyn_info, &msg_recv_can_frame_->data, 8);
+        std::memcpy(&llc_to_comp_data_.vehicle_dyn_info, &msg_recv_can_frame_->data,
+                  sizeof(llc_to_comp_data_.vehicle_dyn_info));
         current_state.twist.longitudinal_velocity =
           static_cast<float>(llc_to_comp_data_.vehicle_dyn_info.linear_veh_velocity);
         current_state.steering_wheel_status_msg.data =
@@ -257,7 +258,8 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
       break;
     case 1042: // fuel, blinker, headlight, wiper, gear, mode, hand_brake and horn publisher
       {
-        std::memcpy(&llc_to_comp_data_.vehicle_sgl_status, &msg_recv_can_frame_->data, 8);
+        std::memcpy(&llc_to_comp_data_.vehicle_sgl_status, &msg_recv_can_frame_->data,
+                    sizeof(llc_to_comp_data_.vehicle_sgl_status));
 
         // set hazard lights status
         indicator_adapter_to_autoware(
@@ -282,17 +284,20 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
       break;
     case 1043: // intervention, ready, motion_allow, throttle, brake, front_steer
       {
-        std::memcpy(&llc_to_comp_data_.motion_info, &msg_recv_can_frame_->data, 8);
+        std::memcpy(&llc_to_comp_data_.motion_info, &msg_recv_can_frame_->data,
+                    sizeof(llc_to_comp_data_.motion_info));
       }
       break;
     case 1044: // temperature and rpm
       {
-        std::memcpy(&llc_to_comp_data_.motor_info, &msg_recv_can_frame_->data, 8);
+        std::memcpy(&llc_to_comp_data_.motor_info, &msg_recv_can_frame_->data,
+                    sizeof(llc_to_comp_data_.motor_info));
       }
       break;
     case 1045: // errors
       {
-        std::memcpy(&llc_to_comp_data_.err_msg, &msg_recv_can_frame_->data, 8);
+        std::memcpy(&llc_to_comp_data_.err_msg, &msg_recv_can_frame_->data,
+                    sizeof(llc_to_comp_data_.err_msg));
         // error info msgs
         mechanical_error_check(latest_system_error);
         electrical_error_check(latest_system_error);
@@ -484,12 +489,11 @@ void LeoVcuDriver::llc_to_state_report_msg_adapter()
   vehicle_state_report_msg_.horn = static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.horn);
 
   // Update State Report Msg with Motion Info
-  vehicle_state_report_msg_.steering_intervention =
-    static_cast<uint8_t>(llc_to_comp_data_.motion_info.steering_intervention);
-  vehicle_state_report_msg_.brake_intervention =
-    static_cast<uint8_t>(llc_to_comp_data_.motion_info.brake_intervention);
-  vehicle_state_report_msg_.acc_pedal_intervention =
-    static_cast<uint8_t>(llc_to_comp_data_.motion_info.acc_pedal_intervention);
+  string intervention = std::bitset<8>(llc_to_comp_data_.motion_info.intervention).to_string();
+  vehicle_state_report_msg_.steering_intervention = (intervention.at(7) == '1') ? 1 : 0;
+  vehicle_state_report_msg_.brake_intervention = (intervention.at(6) == '1') ? 1 : 0;
+  vehicle_state_report_msg_.acc_pedal_intervention = (intervention.at(5) == '1') ? 1 : 0;
+
   vehicle_state_report_msg_.ready = static_cast<uint8_t>(llc_to_comp_data_.motion_info.ready);
   vehicle_state_report_msg_.motion_allow =
     static_cast<uint8_t>(llc_to_comp_data_.motion_info.motion_allow);
@@ -908,7 +912,7 @@ void LeoVcuDriver::electrical_error_check(SystemError & latest_system_error) {
                     latest_system_error.pds_bus_error = true;
                     break;
                 case 15:
-                    RCLCPP_ERROR(this->get_logger(), "PDS_HearBeatError");
+                    //RCLCPP_ERROR(this->get_logger(), "PDS_HearBeatError");
                     latest_system_error.pds_timeout_error = true;
                     break;
                 default:

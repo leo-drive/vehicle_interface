@@ -58,9 +58,7 @@ struct __attribute__((packed)) MotorInfoData{
 };
 
 struct __attribute__((packed)) MotionInfoData{
-  uint8_t steering_intervention;
-  uint8_t brake_intervention;
-  uint8_t acc_pedal_intervention;
+  uint8_t intervention;
   uint8_t ready;
   uint8_t motion_allow;
   uint8_t throttle;
