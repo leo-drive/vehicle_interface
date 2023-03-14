@@ -22,7 +22,8 @@
 #define LEO_VCU_DRIVER__LEO_VCU_DRIVER_HPP_
 
 #include <diagnostic_updater/diagnostic_updater.hpp>
-#include <experimental/optional>
+#include <diagnostic_msgs/msg/diagnostic_status.hpp>
+
 #include <leo_vcu_driver/visibility_control.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <vehicle_info_util/vehicle_info_util.hpp>
@@ -46,7 +47,7 @@
 #include <autoware_auto_vehicle_msgs/msg/turn_indicators_report.hpp>
 
 #include <autoware_auto_vehicle_msgs/msg/velocity_report.hpp>
-//mehce added starts
+
 #include <autoware_auto_vehicle_msgs/msg/hand_brake_command.hpp>
 #include <autoware_auto_vehicle_msgs/msg/hand_brake_report.hpp>
 
@@ -55,9 +56,7 @@
 
 #include <autoware_auto_vehicle_msgs/msg/raw_control_command.hpp>
 
-//#include <pacmod3_msgs/pacmod3_msgs/msg/accel_aux_rpt.hpp>
-//mehce aded ends
-#include <diagnostic_msgs/msg/diagnostic_status.hpp>
+
 #include <std_msgs/msg/string.hpp>
 #include <tier4_control_msgs/msg/gate_mode.hpp>
 
@@ -144,28 +143,36 @@ public:
    * @brief It is callback function which takes data from "/control/command/actuation_cmd" topic in
    * Autoware Universe.
    */
-  void actuator_cmd_callback(const tier4_vehicle_msgs::msg::ActuationCommandStamped::ConstSharedPtr msg);
-   // mehce added starts
-   /**
-   * @brief It is callback function which takes data from "/" topic from Autoware Universe
-   */
-   void hand_brake_cmd_callback(
-     const autoware_auto_vehicle_msgs::msg::HandBrakeCommand::ConstSharedPtr msg);
+  void actuator_cmd_callback(
+    const tier4_vehicle_msgs::msg::ActuationCommandStamped::ConstSharedPtr msg);
+
+  //Hand Brake, headlights and raw control commands are not published yet by Autoware.Universe
   /**
    * @brief It is callback function which takes data from "/" topic from Autoware Universe
-   */
+
+   void hand_brake_cmd_callback(
+     const autoware_auto_vehicle_msgs::msg::HandBrakeCommand::ConstSharedPtr msg);
+  */
+  /**
+   * @brief It is callback function which takes data from "/" topic from Autoware Universe
+
    void headlights_cmd_callback(
      const autoware_auto_vehicle_msgs::msg::HeadlightsCommand::ConstSharedPtr msg);
-   /**
+  */
+  /**
    * @brief It is callback function which takes data from "/" topic from Autoware Universe
-   */
+
    void raw_control_cmd_callback(
      const autoware_auto_vehicle_msgs::msg::RawControlCommand::ConstSharedPtr msg);
-  // mehce added ends
+  */
   /**
    * @brief It sends data from interface to low level controller.
    */
   void llc_publisher();
+  /**
+   * @brief It receives interface message from socketcan ROS2 bridge
+   */
+  void can_receive_callback(can_msgs::msg::Frame::SharedPtr msg);
   /**
    * @brief It converts the steering angle to steering wheel angle.
    * Steering angle means "Teker açısı" and which is radian.
@@ -285,7 +292,6 @@ private:
   /* input values */
 
   // From Autoware
-
   autoware_auto_control_msgs::msg::AckermannControlCommand::ConstSharedPtr control_cmd_ptr_;
   autoware_auto_vehicle_msgs::msg::TurnIndicatorsCommand::ConstSharedPtr turn_indicators_cmd_ptr_;
   autoware_auto_vehicle_msgs::msg::HazardLightsCommand::ConstSharedPtr hazard_lights_cmd_ptr_;
@@ -300,6 +306,7 @@ private:
   autoware_auto_vehicle_msgs::msg::HeadlightsCommand::ConstSharedPtr head_lights_cmd_ptr;
   autoware_auto_vehicle_msgs::msg::RawControlCommand::ConstSharedPtr raw_control_cmd_ptr;
    */
+
   bool engage_cmd_{0};
 
   /* Variables */
@@ -307,11 +314,16 @@ private:
   autoware_auto_system_msgs::msg::HazardStatusStamped::ConstSharedPtr hazard_status_stamped_;
 
   // Current state of vehicle (Got from LLC)
-
   vehicle_current_state_ current_state;
   std_msgs::msg::String error_str;
+  LlcToCompData llc_to_comp_data_ {};
+
+  // CAN interface msg (Got from LLC)
+  can_msgs::msg::Frame::SharedPtr received_can_frame_msg_;
 
   // To LLC
+  CompToLlcCmd comp_to_llc_cmd {};
+  LlcCanMsg llc_can_msgs;
 
   bool is_emergency_{false};
   bool prev_emergency_{false};
@@ -334,13 +346,21 @@ private:
     emergency_state_sub_;
   rclcpp::Subscription<autoware_auto_system_msgs::msg::HazardStatusStamped>::SharedPtr
     sub_hazard_status_stamped_;
-  rclcpp::Subscription<autoware_auto_system_msgs::msg::AutowareState>::ConstSharedPtr autoware_state_sub_;
-  rclcpp::Subscription<tier4_vehicle_msgs::msg::ActuationCommandStamped>::ConstSharedPtr actuation_cmd_sub_;
-  // mehce added starts
-  rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::HandBrakeCommand>::SharedPtr hand_brake_sub_;
-  rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::HeadlightsCommand>::SharedPtr headlights_sub_;
-  rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::RawControlCommand>::SharedPtr raw_control_cmd_sub_;
-  // mehce added ends
+  rclcpp::Subscription<autoware_auto_system_msgs::msg::AutowareState>::ConstSharedPtr
+    autoware_state_sub_;
+  rclcpp::Subscription<tier4_vehicle_msgs::msg::ActuationCommandStamped>::ConstSharedPtr
+    actuation_cmd_sub_;
+  /*
+  rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::HandBrakeCommand>::SharedPtr
+   hand_brake_sub_;
+  rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::HeadlightsCommand>::SharedPtr
+   headlights_sub_;
+  rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::RawControlCommand>::SharedPtr
+   raw_control_cmd_sub_;
+  */
+  // From CAN interface
+  rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr can_frame_sub_;
+
 
   /* publishers */
   // To Autoware
@@ -357,11 +377,13 @@ private:
   rclcpp::Publisher<tier4_vehicle_msgs::msg::SteeringWheelStatusStamped>::SharedPtr
     steering_wheel_status_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr llc_error_pub_;
-  // mehce added starts
+
   rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::HandBrakeReport>::SharedPtr hand_brake_pub_;
   rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::HeadlightsReport>::SharedPtr headlights_pub_;
   rclcpp::Publisher<leo_vcu_msgs::msg::StateReport>::SharedPtr vehicle_state_report_pub_;
-  // mehce added ends
+
+  // To CAN Frame
+  rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr can_frame_pub_;
 
   // Timer
   rclcpp::TimerBase::SharedPtr tim_data_sender_;
@@ -370,7 +392,7 @@ private:
   vehicle_info_util::VehicleInfo vehicle_info_;
 
   std::string base_frame_id_;
-  double data_send_rate_{};                    // [Hz]
+  double data_send_rate_{};               // [Hz]
   float wheel_base_{};                    // [m]
   double command_timeout_ms_{};           // vehicle_cmd timeout [ms]
   bool reverse_gear_enabled_{false};      // reverse gear enabled or not
@@ -410,6 +432,15 @@ private:
   };
 
   SystemError system_error_diagnostics_;
+  /**
+   * @brief It checks mechanical errors from llc message. (Motor Running, KL75)
+   */
+  void mechanical_error_check(SystemError & latest_system_error);
+  /**
+   * @brief It checks electrical errors from llc message. (EPAS, BBW, DBW etc.)
+   */
+  void electrical_error_check(SystemError & latest_system_error);
+
   // TODO(ismet): update w/bayram
   std::vector<float> wheel_angle_{-700.0, -650.0, -600.0, -550.0, -500.0, -450.0, -350.0, -250.0,
                                   -150.0, -50.0,  -25.0,  -10.0,  10.0,   25.0,   50.0,   150.0,
@@ -422,18 +453,5 @@ private:
     0.2716162219588133,    0.37091961814500307,   0.46752682569741805,   0.51357256281933916,
     0.55710949337717441,   0.61005324248865378,   0.63768293444784307,   0.64};
 
-  //can testing codes
-
-  can_msgs::msg::Frame::SharedPtr msg_recv_can_frame_;
-  rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr sub_recv_frame_;
-  rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr pub_send_frame_;
-
-  void receivedFrameCallback(can_msgs::msg::Frame::SharedPtr msg);
-  void mechanical_error_check(SystemError & latest_system_error);
-  void electrical_error_check(SystemError & latest_system_error);
-
-  LlcToCompData llc_to_comp_data_ {};
-  CompToLlcCmd comp_to_llc_cmd {};
-  LlcCanMsg llc_can_msgs;
 };
 #endif  // LEO_VCU_DRIVER__LEO_VCU_DRIVER_HPP_

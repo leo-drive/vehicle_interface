@@ -40,8 +40,8 @@ struct vehicle_current_state_
 //can msgs
 struct LlcCanMsg
 {
-  can_msgs::msg::Frame msg_long_cmd_frame_1;
-  can_msgs::msg::Frame msg_long_cmd_frame_2;
+  can_msgs::msg::Frame long_cmd_msg;
+  can_msgs::msg::Frame long_actuation_cmd_msg;
   can_msgs::msg::Frame msg_veh_signal_cmd_frame;
   can_msgs::msg::Frame msg_front_wheel_cmd_frame;
 };
@@ -100,18 +100,18 @@ struct __attribute__((packed)) VehicleSignalCommandData{
   uint8_t long_mode;
 };
 
-struct __attribute__((packed)) LongitudinalCommandDataV2{
+struct __attribute__((packed)) LongitudinalCommandDataActuation{
   float set_gas_pedal_pos;
   float set_brake_pedal_pos;
 };
 
-struct __attribute__((packed)) LongitudinalCommandDataV1{
+struct __attribute__((packed)) LongitudinalCommandData{
   float set_long_accel;
   float set_limit_velocity;
 };
 
 struct __attribute__((packed)) LlcToCompData {
-  VehicleErrorsData err_msg;
+  VehicleErrorsData error_info;
   MotorInfoData motor_info;
   MotionInfoData motion_info;
   VehicleSignalStatusData vehicle_sgl_status;
@@ -119,10 +119,10 @@ struct __attribute__((packed)) LlcToCompData {
 };
 
 struct __attribute__((packed)) CompToLlcCmd {
-  FrontWheelCommandData front_wheel_cmd_msg;
+  FrontWheelCommandData front_wheel_cmd;
   VehicleSignalCommandData vehicle_signal_cmd;
-  LongitudinalCommandDataV1 long_msg_v1;
-  LongitudinalCommandDataV2 long_msg_v2;
+  LongitudinalCommandData long_cmd;
+  LongitudinalCommandDataActuation long_cmd_actuation;
 };
 
 
