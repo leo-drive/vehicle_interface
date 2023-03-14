@@ -18,7 +18,52 @@
 #ifndef BUILD_VEHICLE_INTERFACE_H
 #define BUILD_VEHICLE_INTERFACE_H
 
+
+#include <autoware_auto_control_msgs/msg/ackermann_control_command.hpp>
+#include <autoware_auto_system_msgs/msg/emergency_state.hpp>
+#include <autoware_auto_system_msgs/msg/hazard_status_stamped.hpp>
+#include <autoware_auto_system_msgs/msg/autoware_state.hpp>
+#include <autoware_auto_vehicle_msgs/msg/control_mode_report.hpp>
+#include <autoware_auto_vehicle_msgs/msg/engage.hpp>
+
+#include <autoware_auto_vehicle_msgs/msg/gear_command.hpp>
+#include <autoware_auto_vehicle_msgs/msg/gear_report.hpp>
+
+#include <autoware_auto_vehicle_msgs/msg/hazard_lights_command.hpp>
+#include <autoware_auto_vehicle_msgs/msg/hazard_lights_report.hpp>
+
+#include <autoware_auto_vehicle_msgs/msg/steering_report.hpp>
+
+#include <autoware_auto_vehicle_msgs/msg/turn_indicators_command.hpp>
+#include <autoware_auto_vehicle_msgs/msg/turn_indicators_report.hpp>
+
+#include <autoware_auto_vehicle_msgs/msg/velocity_report.hpp>
+
+#include <autoware_auto_vehicle_msgs/msg/hand_brake_command.hpp>
+#include <autoware_auto_vehicle_msgs/msg/hand_brake_report.hpp>
+
+#include <autoware_auto_vehicle_msgs/msg/headlights_command.hpp>
+#include <autoware_auto_vehicle_msgs/msg/headlights_report.hpp>
+
+#include <autoware_auto_vehicle_msgs/msg/raw_control_command.hpp>
+
+
+#include <std_msgs/msg/string.hpp>
+#include <tier4_control_msgs/msg/gate_mode.hpp>
+
+#include <tier4_vehicle_msgs/msg/actuation_command_stamped.hpp>
+#include <tier4_vehicle_msgs/msg/actuation_status_stamped.hpp>
+
+#include <tier4_vehicle_msgs/msg/steering_wheel_status_stamped.hpp>
+#include <tier4_vehicle_msgs/msg/vehicle_emergency_stamped.hpp>
+#include <leo_vcu_msgs/msg/state_report.hpp>
+
+#include <can_msgs/msg/frame.hpp>
+
 #include <cstdint>
+
+namespace leo_vcu_driver::vehicle_interface
+{
 
 using namespace std;
 
@@ -124,7 +169,6 @@ struct __attribute__((packed)) CompToLlcCmd {
   LongitudinalCommandData long_cmd;
   LongitudinalCommandDataActuation long_cmd_actuation;
 };
-
-
+}
 
 #endif //BUILD_VEHICLE_INTERFACE_H

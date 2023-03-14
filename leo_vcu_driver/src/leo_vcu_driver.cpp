@@ -28,6 +28,7 @@ using namespace std::chrono_literals;
 
 LeoVcuDriver::LeoVcuDriver()
 : Node("leo_vcu_driver"),
+  plugin_loader_("leo_vcu_driver", "leo_vcu_driver::LeoVcuDriverPlugin"),
   vehicle_info_(vehicle_info_util::VehicleInfoUtil(*this).getVehicleInfo()),
   updater_(this)
 {
@@ -132,9 +133,6 @@ LeoVcuDriver::LeoVcuDriver()
   vehicle_state_report_pub_ = create_publisher<leo_vcu_msgs::msg::StateReport>(
     "/vehicle/status/status_report", rclcpp::QoS{1});
 
-  // To LLC interface
-  can_frame_pub_ = this->create_publisher<can_msgs::msg::Frame>("/to_can_bus", rclcpp::QoS{10});
-
   // System error diagnostic
   updater_.setHardwareID("vehicle_error_monitor");
   updater_.add("motor_running_error", this, &LeoVcuDriver::checkMotorRunningError);
@@ -152,10 +150,14 @@ LeoVcuDriver::LeoVcuDriver()
   updater_.add("brake_timeout_error", this, &LeoVcuDriver::checkBrakeTimeoutError);
   updater_.add("pc_timeout_error", this, &LeoVcuDriver::checkPCTimeoutError);
 
+  // Load plugin
+  driver_interface_plugin_ = plugin_loader_.createSharedInstance("leo_vcu_driver::can_interface::CanInterface");
+  driver_interface_plugin_->initialize(this);
+
   // Timer
   const auto period_ns = rclcpp::Rate(data_send_rate_).period();
   tim_data_sender_ = rclcpp::create_timer(
-    this, get_clock(), period_ns, std::bind(&LeoVcuDriver::llc_publisher, this));
+    this, get_clock(), period_ns, std::bind(&LeoVcuDriver::llc_interface_adapter, this));
 
 }
 
@@ -503,7 +505,7 @@ void LeoVcuDriver::llc_to_state_report_msg_adapter()
   vehicle_state_report_msg_.horn = static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.horn);
 
   // Update State Report Msg with Motion Info
-  string intervention = std::bitset<8>(llc_to_comp_data_.motion_info.intervention).to_string();
+  std::string intervention = std::bitset<8>(llc_to_comp_data_.motion_info.intervention).to_string();
   vehicle_state_report_msg_.steering_intervention = (intervention.at(7) == '1') ? 1 : 0;
   vehicle_state_report_msg_.brake_intervention = (intervention.at(6) == '1') ? 1 : 0;
   vehicle_state_report_msg_.acc_pedal_intervention = (intervention.at(5) == '1') ? 1 : 0;
@@ -604,18 +606,12 @@ float LeoVcuDriver::steering_wheel_to_steering_tire_angle(
   return std::clamp(output + steering_offset,steering_angle_.at(0),steering_angle_.back());
 }
 
-void LeoVcuDriver::llc_publisher()
+void LeoVcuDriver::llc_interface_adapter()
 {
   bool emergency_send{false};
   bool time_out = false;
   const rclcpp::Time current_time = get_clock()->now();
 
-  if(can_frame_pub_->get_subscription_count() < 1)
-  {
-    RCLCPP_WARN(
-      get_logger(), "CAN RECEIVER IS NOT READY!");
-    return;
-  }
   if (!autoware_data_ready())
   {
     //TODO(ismet): add what we need to send to CAN when autoware data is not ready
@@ -712,37 +708,7 @@ void LeoVcuDriver::llc_publisher()
                         -max_steering_wheel_angle_rate));
     }
 
-  std::memcpy(&llc_can_msgs.long_cmd_msg.data, &comp_to_llc_cmd.long_cmd, 8);
-  std::memcpy(&llc_can_msgs.long_actuation_cmd_msg.data, &comp_to_llc_cmd.long_cmd_actuation, 8);
-  std::memcpy(&llc_can_msgs.msg_veh_signal_cmd_frame.data, &comp_to_llc_cmd.vehicle_signal_cmd, 8);
-  std::memcpy(
-    &llc_can_msgs.msg_front_wheel_cmd_frame.data, &comp_to_llc_cmd.front_wheel_cmd, 8);
-
-  // publish can msgs
-  std_msgs::msg::Header header;
-  header.frame_id = this->base_frame_id_;
-  header.stamp = get_clock()->now();
-
-  llc_can_msgs.long_cmd_msg.header = header;
-  llc_can_msgs.long_cmd_msg.dlc = static_cast<uint8_t>(8);
-  llc_can_msgs.long_cmd_msg.id = static_cast<uint32_t>(1024);
-
-  llc_can_msgs.long_actuation_cmd_msg.header = header;
-  llc_can_msgs.long_actuation_cmd_msg.dlc = static_cast<uint8_t>(8);
-  llc_can_msgs.long_actuation_cmd_msg.id = static_cast<uint32_t>(1025);
-
-  llc_can_msgs.msg_veh_signal_cmd_frame.header = header;
-  llc_can_msgs.msg_veh_signal_cmd_frame.dlc = static_cast<uint8_t>(8);
-  llc_can_msgs.msg_veh_signal_cmd_frame.id = static_cast<uint32_t>(1026);
-
-  llc_can_msgs.msg_front_wheel_cmd_frame.header = header;
-  llc_can_msgs.msg_front_wheel_cmd_frame.dlc = static_cast<uint8_t>(8);
-  llc_can_msgs.msg_front_wheel_cmd_frame.id = static_cast<uint32_t>(1027);
-
-  can_frame_pub_->publish(llc_can_msgs.long_cmd_msg);
-  can_frame_pub_->publish(llc_can_msgs.long_actuation_cmd_msg);
-  can_frame_pub_->publish(llc_can_msgs.msg_veh_signal_cmd_frame);
-  can_frame_pub_->publish(llc_can_msgs.msg_front_wheel_cmd_frame);
+  driver_interface_plugin_->llc_publisher(comp_to_llc_cmd);
 
   vehicle_state_report_pub_->publish(vehicle_state_report_msg_);
 

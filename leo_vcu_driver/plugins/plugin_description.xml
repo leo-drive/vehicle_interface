@@ -1,0 +1,3 @@
+<library path="leo_vcu_driver_interface_plugins">
+  <class type="leo_vcu_driver::can_interface::CanInterface" base_class_type="leo_vcu_driver::LeoVcuDriverPlugin"/>
+</library>

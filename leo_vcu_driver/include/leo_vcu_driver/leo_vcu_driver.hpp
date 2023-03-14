@@ -24,50 +24,13 @@
 #include <diagnostic_updater/diagnostic_updater.hpp>
 #include <diagnostic_msgs/msg/diagnostic_status.hpp>
 
+#include <pluginlib/class_loader.hpp>
+#include <leo_vcu_driver/leo_vcu_driver_plugin.hpp>
+
 #include <leo_vcu_driver/visibility_control.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <vehicle_info_util/vehicle_info_util.hpp>
 
-#include <autoware_auto_control_msgs/msg/ackermann_control_command.hpp>
-#include <autoware_auto_system_msgs/msg/emergency_state.hpp>
-#include <autoware_auto_system_msgs/msg/hazard_status_stamped.hpp>
-#include <autoware_auto_system_msgs/msg/autoware_state.hpp>
-#include <autoware_auto_vehicle_msgs/msg/control_mode_report.hpp>
-#include <autoware_auto_vehicle_msgs/msg/engage.hpp>
-
-#include <autoware_auto_vehicle_msgs/msg/gear_command.hpp>
-#include <autoware_auto_vehicle_msgs/msg/gear_report.hpp>
-
-#include <autoware_auto_vehicle_msgs/msg/hazard_lights_command.hpp>
-#include <autoware_auto_vehicle_msgs/msg/hazard_lights_report.hpp>
-
-#include <autoware_auto_vehicle_msgs/msg/steering_report.hpp>
-
-#include <autoware_auto_vehicle_msgs/msg/turn_indicators_command.hpp>
-#include <autoware_auto_vehicle_msgs/msg/turn_indicators_report.hpp>
-
-#include <autoware_auto_vehicle_msgs/msg/velocity_report.hpp>
-
-#include <autoware_auto_vehicle_msgs/msg/hand_brake_command.hpp>
-#include <autoware_auto_vehicle_msgs/msg/hand_brake_report.hpp>
-
-#include <autoware_auto_vehicle_msgs/msg/headlights_command.hpp>
-#include <autoware_auto_vehicle_msgs/msg/headlights_report.hpp>
-
-#include <autoware_auto_vehicle_msgs/msg/raw_control_command.hpp>
-
-
-#include <std_msgs/msg/string.hpp>
-#include <tier4_control_msgs/msg/gate_mode.hpp>
-
-#include <tier4_vehicle_msgs/msg/actuation_command_stamped.hpp>
-#include <tier4_vehicle_msgs/msg/actuation_status_stamped.hpp>
-
-#include <tier4_vehicle_msgs/msg/steering_wheel_status_stamped.hpp>
-#include <tier4_vehicle_msgs/msg/vehicle_emergency_stamped.hpp>
-#include <leo_vcu_msgs/msg/state_report.hpp>
-
-#include <can_msgs/msg/frame.hpp>
 #include <leo_vcu_driver/vehicle_interface.h>
 #include <linux/can.h>
 #include <bitset>
@@ -168,7 +131,7 @@ public:
   /**
    * @brief It sends data from interface to low level controller.
    */
-  void llc_publisher();
+  void llc_interface_adapter();
   /**
    * @brief It receives interface message from socketcan ROS2 bridge
    */
@@ -289,6 +252,9 @@ private:
    */
   void checkPCTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat);
 
+  pluginlib::ClassLoader<leo_vcu_driver::LeoVcuDriverPlugin> plugin_loader_;
+  std::shared_ptr<leo_vcu_driver::LeoVcuDriverPlugin> driver_interface_plugin_;
+
   /* input values */
 
   // From Autoware
@@ -314,16 +280,15 @@ private:
   autoware_auto_system_msgs::msg::HazardStatusStamped::ConstSharedPtr hazard_status_stamped_;
 
   // Current state of vehicle (Got from LLC)
-  vehicle_current_state_ current_state;
+  leo_vcu_driver::vehicle_interface::vehicle_current_state_ current_state;
   std_msgs::msg::String error_str;
-  LlcToCompData llc_to_comp_data_ {};
+  leo_vcu_driver::vehicle_interface::LlcToCompData llc_to_comp_data_ {};
 
   // CAN interface msg (Got from LLC)
   can_msgs::msg::Frame::SharedPtr received_can_frame_msg_;
 
   // To LLC
-  CompToLlcCmd comp_to_llc_cmd {};
-  LlcCanMsg llc_can_msgs;
+  leo_vcu_driver::vehicle_interface::CompToLlcCmd comp_to_llc_cmd {};
 
   bool is_emergency_{false};
   bool prev_emergency_{false};
@@ -381,9 +346,6 @@ private:
   rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::HandBrakeReport>::SharedPtr hand_brake_pub_;
   rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::HeadlightsReport>::SharedPtr headlights_pub_;
   rclcpp::Publisher<leo_vcu_msgs::msg::StateReport>::SharedPtr vehicle_state_report_pub_;
-
-  // To CAN Frame
-  rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr can_frame_pub_;
 
   // Timer
   rclcpp::TimerBase::SharedPtr tim_data_sender_;

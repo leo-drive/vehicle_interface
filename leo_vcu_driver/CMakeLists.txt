@@ -22,6 +22,12 @@ if(BUILD_TESTING)
     ament_lint_auto_find_test_dependencies()
 endif()
 
+ament_auto_add_library(${PROJECT_NAME}_interface_plugins SHARED
+        src/interface_plugins/leo_vcu_can_interface.cpp
+        )
+
+pluginlib_export_plugin_description_file(leo_vcu_driver plugins/plugin_description.xml)
+
 ament_auto_package(
         INSTALL_TO_SHARE
         launch
