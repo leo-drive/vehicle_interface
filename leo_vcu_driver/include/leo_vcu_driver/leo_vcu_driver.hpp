@@ -25,7 +25,7 @@
 #include <diagnostic_msgs/msg/diagnostic_status.hpp>
 
 #include <pluginlib/class_loader.hpp>
-#include <leo_vcu_driver/leo_vcu_driver_plugin.hpp>
+#include <leo_vcu_driver/interface_plugins/leo_vcu_driver_plugin.hpp>
 
 #include <leo_vcu_driver/visibility_control.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -133,9 +133,9 @@ public:
    */
   void llc_interface_adapter();
   /**
-   * @brief It receives interface message from socketcan ROS2 bridge
+   * @brief It publishes current state of vehicle to Autoware.Universe
    */
-  void can_receive_callback(can_msgs::msg::Frame::SharedPtr msg);
+  void publish_current_vehicle_state();
   /**
    * @brief It converts the steering angle to steering wheel angle.
    * Steering angle means "Teker açısı" and which is radian.
@@ -353,6 +353,7 @@ private:
   /* ros params */
   vehicle_info_util::VehicleInfo vehicle_info_;
 
+  std::string interface_mod_;
   std::string base_frame_id_;
   double data_send_rate_{};               // [Hz]
   float wheel_base_{};                    // [m]

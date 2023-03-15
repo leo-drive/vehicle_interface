@@ -123,7 +123,7 @@ struct __attribute__((packed)) VehicleSignalStatusData{
 };
 
 struct __attribute__((packed)) VehicleDynamicsInfoData{
-  float linear_veh_velocity;
+  float linear_vehicle_velocity;
   float steering_wheel_angle;
 };
 

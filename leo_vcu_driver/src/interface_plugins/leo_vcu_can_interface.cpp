@@ -12,16 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <leo_vcu_driver/leo_vcu_can_interface.hpp>
+#include <leo_vcu_driver/interface_plugins/leo_vcu_can_interface.hpp>
 
 namespace leo_vcu_driver::can_interface
 {
 
+using namespace std::placeholders;
+
 void CanInterface::initialize(rclcpp::Node * node)
 {
   node_ = node;
+
+  can_frame_sub_ = node_->create_subscription<can_msgs::msg::Frame>(
+    "/from_can_bus", rclcpp::QoS{1}, std::bind(&CanInterface::can_receive_callback, this, _1));
+
   can_frame_pub_ =node_->create_publisher<can_msgs::msg::Frame>("/to_can_bus", rclcpp::QoS{10});
 }
+
+bool CanInterface::update_received_frame(
+  leo_vcu_driver::vehicle_interface::LlcToCompData & llc_to_comp_data)
+{
+  if(can_frame_sub_->get_publisher_count() < 1)
+  {
+    RCLCPP_WARN(
+      node_->get_logger(), "WAITING FOR CAN TOPIC SUBSCRIPTION!");
+    return false;
+  }
+  llc_to_comp_data = llc_to_comp_data_;
+  return true;
+}
+
 void CanInterface::llc_publisher(
   const leo_vcu_driver::vehicle_interface::CompToLlcCmd & comp_to_llc_cmd)
 {
@@ -62,6 +82,48 @@ void CanInterface::llc_publisher(
   can_frame_pub_->publish(llc_can_msgs.long_actuation_cmd_msg);
   can_frame_pub_->publish(llc_can_msgs.msg_veh_signal_cmd_frame);
   can_frame_pub_->publish(llc_can_msgs.msg_front_wheel_cmd_frame);
+}
+
+void CanInterface::can_receive_callback(can_msgs::msg::Frame::SharedPtr msg)
+{
+  switch (msg->id) {
+    case 1041: // get linear vehicle velocity and front wheel angle
+    {
+      std::memcpy(&llc_to_comp_data_.vehicle_dyn_info, &msg->data,
+                  sizeof(llc_to_comp_data_.vehicle_dyn_info));
+    }
+    break;
+    case 1042: // fuel, blinker, headlight, wiper, gear, mode, hand_brake and horn publisher
+    {
+      std::memcpy(&llc_to_comp_data_.vehicle_sgl_status, &msg->data,
+                  sizeof(llc_to_comp_data_.vehicle_sgl_status));
+
+    }
+    break;
+    case 1043: // intervention, ready, motion_allow, throttle, brake, front_steer
+    {
+      std::memcpy(&llc_to_comp_data_.motion_info, &msg->data,
+                  sizeof(llc_to_comp_data_.motion_info));
+    }
+    break;
+    case 1044: // temperature and rpm
+    {
+      std::memcpy(&llc_to_comp_data_.motor_info, &msg->data,
+                  sizeof(llc_to_comp_data_.motor_info));
+    }
+    break;
+    case 1045: // errors
+    {
+      std::memcpy(&llc_to_comp_data_.error_info, &msg->data,
+                  sizeof(llc_to_comp_data_.error_info));
+    }
+    break;
+    case 1024: case 1025: case 1026: case 1027: // sending frame ids
+      break;
+    default:
+      RCLCPP_ERROR(node_->get_logger(), "Invalid CanId: %d", msg->id);
+      break;
+  }
 }
 
 }  // namespace leo_vcu_driver::can_interface

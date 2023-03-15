@@ -1,5 +1,6 @@
 /**:
   ros__parameters:
+    interface_mod: "CAN"                          # CAN or SERIAL
     base_frame_id: "base_link"
     command_timeout_ms: 1000.0
     data_publish_rate: 100.0

@@ -28,7 +28,12 @@ class LeoVcuDriverPlugin
 public:
 
   virtual ~LeoVcuDriverPlugin() = default;
+
   virtual void initialize(rclcpp::Node * node) = 0;
+
+  virtual bool update_received_frame(
+    leo_vcu_driver::vehicle_interface::LlcToCompData & llc_to_comp_data) = 0;
+
   virtual void llc_publisher(
     const leo_vcu_driver::vehicle_interface::CompToLlcCmd & comp_to_llc_cmd) = 0;
 
