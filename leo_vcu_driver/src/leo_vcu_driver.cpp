@@ -139,10 +139,12 @@ LeoVcuDriver::LeoVcuDriver()
 
   // Load interface plugin
   if (interface_mod_ == "CAN"){
-    driver_interface_plugin_ = plugin_loader_.createSharedInstance("leo_vcu_driver::can_interface::CanInterface");
+    driver_interface_plugin_ =
+      plugin_loader_.createSharedInstance("leo_vcu_driver::can_interface::CanInterface");
     driver_interface_plugin_->initialize(this);
   } else { // SERIAL
-    driver_interface_plugin_ = plugin_loader_.createSharedInstance("leo_vcu_driver::can_interface::CanInterface");
+    driver_interface_plugin_ =
+      plugin_loader_.createSharedInstance("leo_vcu_driver::serial_interface::SerialInterface");
     driver_interface_plugin_->initialize(this);
   }
 
@@ -251,15 +253,6 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
   current_state.hand_brake_msg.report =
     static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status.hand_brake);
 
-
-  std::memcpy(&llc_to_comp_data_.motion_info, &received_can_frame_msg_->data,
-              sizeof(llc_to_comp_data_.motion_info));
-
-  std::memcpy(&llc_to_comp_data_.motor_info, &received_can_frame_msg_->data,
-              sizeof(llc_to_comp_data_.motor_info));
-
-  std::memcpy(&llc_to_comp_data_.error_info, &received_can_frame_msg_->data,
-              sizeof(llc_to_comp_data_.error_info));
   // error info msgs
   mechanical_error_check(latest_system_error);
   electrical_error_check(latest_system_error);
@@ -563,6 +556,7 @@ void LeoVcuDriver::llc_interface_adapter()
   }
   llc_to_autoware_msg_adapter();
 
+  // To Autoware
   publish_current_vehicle_state();
 
   bool emergency_send{false};

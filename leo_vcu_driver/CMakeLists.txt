@@ -15,6 +15,7 @@ endif()
 ament_auto_add_executable(leo_vcu_driver
         src/leo_vcu_driver_node.cpp
         src/leo_vcu_driver.cpp
+        src/async_serial/AsyncSerial.cpp
         )
 
 if(BUILD_TESTING)
@@ -24,7 +25,9 @@ endif()
 
 ament_auto_add_library(${PROJECT_NAME}_interface_plugins SHARED
         src/interface_plugins/leo_vcu_can_interface.cpp
+        src/interface_plugins/leo_vcu_serial_interface.cpp
         )
+
 
 pluginlib_export_plugin_description_file(leo_vcu_driver plugins/plugin_description.xml)
 

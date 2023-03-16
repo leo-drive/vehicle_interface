@@ -32,7 +32,6 @@
 #include <vehicle_info_util/vehicle_info_util.hpp>
 
 #include <leo_vcu_driver/vehicle_interface.h>
-#include <linux/can.h>
 #include <bitset>
 #include <string>
 #include <vector>
@@ -284,9 +283,6 @@ private:
   std_msgs::msg::String error_str;
   leo_vcu_driver::vehicle_interface::LlcToCompData llc_to_comp_data_ {};
 
-  // CAN interface msg (Got from LLC)
-  can_msgs::msg::Frame::SharedPtr received_can_frame_msg_;
-
   // To LLC
   leo_vcu_driver::vehicle_interface::CompToLlcCmd comp_to_llc_cmd {};
 
@@ -323,9 +319,6 @@ private:
   rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::RawControlCommand>::SharedPtr
    raw_control_cmd_sub_;
   */
-  // From CAN interface
-  rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr can_frame_sub_;
-
 
   /* publishers */
   // To Autoware

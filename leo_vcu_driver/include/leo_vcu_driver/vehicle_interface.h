@@ -156,11 +156,20 @@ struct __attribute__((packed)) LongitudinalCommandData{
 };
 
 struct __attribute__((packed)) LlcToCompData {
+  uint8_t frame_id1;
+  uint8_t frame_id2;
+  uint16_t errors;
+  uint32_t counter;
+
   VehicleErrorsData error_info;
   MotorInfoData motor_info;
   MotionInfoData motion_info;
   VehicleSignalStatusData vehicle_sgl_status;
   VehicleDynamicsInfoData vehicle_dyn_info;
+
+  uint16_t crc;
+  uint8_t eof_id1;
+  uint8_t eof_id2;
 };
 
 struct __attribute__((packed)) CompToLlcCmd {
