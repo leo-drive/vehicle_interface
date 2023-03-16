@@ -156,27 +156,40 @@ struct __attribute__((packed)) LongitudinalCommandData{
 };
 
 struct __attribute__((packed)) LlcToCompData {
+  /* Serial Frame and Counter Info */
   uint8_t frame_id1;
   uint8_t frame_id2;
-  uint16_t errors;
   uint32_t counter;
 
+  /* Serial and CAN Common Data */
   VehicleErrorsData error_info;
   MotorInfoData motor_info;
   MotionInfoData motion_info;
   VehicleSignalStatusData vehicle_sgl_status;
   VehicleDynamicsInfoData vehicle_dyn_info;
 
+  /* Serial CRC Check and EOF ID Info */
   uint16_t crc;
   uint8_t eof_id1;
   uint8_t eof_id2;
 };
 
 struct __attribute__((packed)) CompToLlcCmd {
+  /* Serial Frame and Counter Cmd */
+  uint8_t frame_id1;
+  uint8_t frame_id2;
+  uint32_t counter{0};
+
+  /* Serial and CAN Common Data Cmd*/
   FrontWheelCommandData front_wheel_cmd;
   VehicleSignalCommandData vehicle_signal_cmd;
   LongitudinalCommandData long_cmd;
   LongitudinalCommandDataActuation long_cmd_actuation;
+
+  /* Serial CRC and EOF ID Cmd */
+  uint16_t crc{0};
+  uint8_t eof_id1;
+  uint8_t eof_id2;
 };
 }
 

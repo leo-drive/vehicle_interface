@@ -6,9 +6,13 @@
   <!-- vehicle info -->
   <arg name="vehicle_info_param_file" default="$(find-pkg-share vehicle_info_util)/config/vehicle_info.param.yaml"/>
 
-  <!-- isuzu interface -->
+  <!-- vehicle info -->
+  <arg name="interface_mod" default="CAN" description="interface mod of driver: CAN or Serial"/>
+
+  <!-- vehicle interface -->
   <node pkg="leo_vcu_driver" exec="leo_vcu_driver" name="leo_vcu_driver" output="screen">
     <param from="$(var leo_vcu_param_path)"/>
+    <param name="interface_mod" value="$(var interface_mod)"/>
     <param from="$(var vehicle_info_param_file)"/>
   </node>
 

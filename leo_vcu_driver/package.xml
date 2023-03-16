@@ -5,6 +5,7 @@
   <version>1.0.0</version>
   <description>LLC_Driver_for_LEO_ECU</description>
   <maintainer email="berkay@leodrive.ai">Berkay Karaman</maintainer>
+  <maintainer email="ismet@leodrive.ai">Ismet Atabay</maintainer>
   <license>Apache 2.0</license>
 
   <buildtool_depend>ament_cmake_auto</buildtool_depend>

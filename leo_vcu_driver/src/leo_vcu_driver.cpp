@@ -369,7 +369,7 @@ void LeoVcuDriver::indicator_adapter_to_autoware(uint8_t & input)
 
 void LeoVcuDriver::indicator_adapter_to_llc()
 {
-  /* send turn and hazard commad */
+  /* send turn and hazard command */
 
   if ( hazard_lights_cmd_ptr_->command ==
         autoware_auto_vehicle_msgs::msg::HazardLightsCommand::ENABLE)  // It is prior!
@@ -432,6 +432,12 @@ void LeoVcuDriver::gear_adapter_to_llc(const uint8_t & input)
 
 void LeoVcuDriver::llc_to_state_report_msg_adapter()
 {
+  std_msgs::msg::Header header;
+  header.frame_id = this->base_frame_id_;
+  header.stamp = get_clock()->now();
+
+  vehicle_state_report_msg_.header = header;
+
   // Update State Report Msg with Vehicle Status
   vehicle_state_report_msg_.fuel = static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.fuel);
   vehicle_state_report_msg_.blinker =
@@ -481,7 +487,7 @@ size_t compare(std::vector<float> & vec, double value)
 
 float LeoVcuDriver::steering_tire_to_steering_wheel_angle(
   float input)  // rad input degree output, maybe constants needs re-calculation
-{               // TODO: If input or output is out of boundry, what we will do?
+{               // TODO: If input or output is out of boundary, what we will do?
   input = input - steering_offset;
   float output = 0.0;
   size_t other_idx = 0;
@@ -516,7 +522,7 @@ float LeoVcuDriver::steering_tire_to_steering_wheel_angle(
 
 float LeoVcuDriver::steering_wheel_to_steering_tire_angle(
   float input)  // degree input rad output, maybe constants needs re-calculation
-{               // TODO: If input or output is out of boundry, what we will do?
+{               // TODO: If input or output is out of boundary, what we will do?
   input = -input;
   float output = 0.0;
   size_t other_idx = 0;
@@ -587,7 +593,7 @@ void LeoVcuDriver::llc_interface_adapter()
 
   if (time_out) {
     RCLCPP_ERROR(get_logger(),
-      "Emergency Stopping, controller output is timeouted = %f ms", control_cmd_delta_time_ms);
+      "Emergency Stopping, controller output is timeout = %f ms", control_cmd_delta_time_ms);
     if (enable_cmd_timeout_emergency) {
       emergency_send = true;
     }
@@ -827,7 +833,7 @@ void LeoVcuDriver::electrical_error_check(SystemError & latest_system_error) {
                     latest_system_error.epas_system_error = true;
                     break;
                 case 9:
-                    RCLCPP_ERROR(this->get_logger(), "G29_HeartBeatEror");
+                    // RCLCPP_ERROR(this->get_logger(), "G29_HeartBeatError");
                     latest_system_error.g29_timeout_error = true;
                     break;
                 case 10:
@@ -936,7 +942,7 @@ void LeoVcuDriver::checkBrakePowerError(diagnostic_updater::DiagnosticStatusWrap
     std::string diag_message = "Brake system powered up";
     if (system_error_diagnostics_.brake_power_error) {
         diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-        diag_message = "Brake system power error deteced";
+        diag_message = "Brake system power error detected";
     }
     stat.summary(diag_level, diag_message);
 }

@@ -28,6 +28,10 @@ bool SerialInterface::update_received_frame(
   leo_vcu_driver::vehicle_interface::LlcToCompData & llc_to_comp_data)
 {
   llc_to_comp_data = llc_to_comp_data_;
+  if (!serial_ready) {
+    RCLCPP_WARN(node_->get_logger(), "SERIAL IS NOT READY TO COMMUNICATE!");
+  }
+  return serial_ready;
 }
 
 void SerialInterface::llc_publisher(
@@ -46,15 +50,38 @@ void SerialInterface::llc_publisher(
   } else {
     serial_ready = true;
   }
+
+  if (serial->errorStatus() && serial->isOpen()) {
+    delete serial;
+    serial_ready = false;
+    serial = new CallbackAsyncSerial;
+    return;
+  }
+
+  leo_vcu_driver::vehicle_interface::CompToLlcCmd send_data{
+    comp_to_llc_msg_frame_id, comp_to_llc_msg_frame_id,
+    static_cast<uint32_t>(serial_counter), comp_to_llc_cmd.front_wheel_cmd,
+    comp_to_llc_cmd.vehicle_signal_cmd, comp_to_llc_cmd.long_cmd,
+    comp_to_llc_cmd.long_cmd_actuation, 0,comp_to_llc_msg_eof_id, comp_to_llc_msg_eof_id};
+
+  const auto serialData = pack_serial_data(send_data);
+  serial->write(serialData);
+  serial_counter++;
 }
 
 void SerialInterface::serial_receive_callback(const char * data, unsigned int len)
 {
-  auto llc_to_comp_data_{find_llc_to_comp_msg(data, len)};
-  if (!llc_to_comp_data_) {
+  auto receive_data{find_llc_to_comp_msg(data, len)};
+  if (!receive_data) {
     RCLCPP_ERROR(node_->get_logger(), "Received data is not viable!\n");
     return;
   }
+
+  llc_to_comp_data_ = {llc_to_comp_msg_frame_id, llc_to_comp_msg_frame_id, receive_data->counter,
+                       receive_data->error_info, receive_data->motor_info,
+                       receive_data->motion_info, receive_data->vehicle_sgl_status,
+                       receive_data->vehicle_dyn_info, receive_data->crc, llc_to_comp_msg_eof_id,
+                       llc_to_comp_msg_eof_id};
 }
 
 optional<leo_vcu_driver::vehicle_interface::LlcToCompData> SerialInterface::find_llc_to_comp_msg(
@@ -71,7 +98,6 @@ optional<leo_vcu_driver::vehicle_interface::LlcToCompData> SerialInterface::find
     receive_buffer_.size() - sizeof(leo_vcu_driver::vehicle_interface::LlcToCompData) + 1;
 
   for (size_t i = 0; i < search_range; i++) {
-
     const auto llc_data = reinterpret_cast<leo_vcu_driver::vehicle_interface::LlcToCompData*>(
       receive_buffer_.data() + i);
     if (
@@ -79,12 +105,16 @@ optional<leo_vcu_driver::vehicle_interface::LlcToCompData> SerialInterface::find
       llc_data->frame_id2 == llc_to_comp_msg_frame_id &&
       llc_data->eof_id1 == llc_to_comp_msg_eof_id && llc_data->eof_id2 == llc_to_comp_msg_eof_id)
     {
-      const uint16_t crc = crc_16(receive_buffer_.data() + i, sizeof(leo_vcu_driver::vehicle_interface::LlcToCompData) - 4);
+      const uint16_t crc =
+        crc_16(receive_buffer_.data() + i,
+               sizeof(leo_vcu_driver::vehicle_interface::LlcToCompData) - 4);
+
       if (crc == llc_data->crc) {
         leo_vcu_driver::vehicle_interface::LlcToCompData valid_data{*llc_data};
         receive_buffer_.erase(
           receive_buffer_.begin(),
-          receive_buffer_.begin() + static_cast<long>(i) + sizeof(leo_vcu_driver::vehicle_interface::LlcToCompData));
+          receive_buffer_.begin() + static_cast<long>(i) +
+            sizeof(leo_vcu_driver::vehicle_interface::LlcToCompData));
         return std::experimental::make_optional(valid_data);
       }
     }
@@ -103,4 +133,5 @@ std::vector<char> SerialInterface::pack_serial_data(
 }  // namespace leo_vcu_driver::serial_interface
 
 #include <pluginlib/class_list_macros.hpp>
-PLUGINLIB_EXPORT_CLASS(leo_vcu_driver::serial_interface::SerialInterface, leo_vcu_driver::LeoVcuDriverPlugin)
+PLUGINLIB_EXPORT_CLASS(leo_vcu_driver::serial_interface::SerialInterface,
+                       leo_vcu_driver::LeoVcuDriverPlugin)

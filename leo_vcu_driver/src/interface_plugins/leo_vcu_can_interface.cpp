@@ -59,7 +59,7 @@ void CanInterface::llc_publisher(
     &llc_can_msgs.msg_front_wheel_cmd_frame.data, &comp_to_llc_cmd.front_wheel_cmd, 8);
 
   std_msgs::msg::Header header;
-  header.frame_id = node_->get_parameter("base_frame_id").get_parameter_value().get<std::string>();;
+  header.frame_id = node_->get_parameter("base_frame_id").get_parameter_value().get<std::string>();
   header.stamp = node_->get_clock()->now();
 
   llc_can_msgs.long_cmd_msg.header = header;
@@ -129,4 +129,5 @@ void CanInterface::can_receive_callback(can_msgs::msg::Frame::SharedPtr msg)
 }  // namespace leo_vcu_driver::can_interface
 
 #include <pluginlib/class_list_macros.hpp>
-PLUGINLIB_EXPORT_CLASS(leo_vcu_driver::can_interface::CanInterface, leo_vcu_driver::LeoVcuDriverPlugin)
+PLUGINLIB_EXPORT_CLASS(leo_vcu_driver::can_interface::CanInterface,
+                       leo_vcu_driver::LeoVcuDriverPlugin)

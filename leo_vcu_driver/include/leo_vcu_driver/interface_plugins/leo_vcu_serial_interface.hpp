@@ -38,6 +38,8 @@ public:
 
   CallbackAsyncSerial * serial;
 
+  int serial_counter{0};
+
   const std::string serial_name_{"/dev/ttyLLC"};
   bool serial_ready{false};
 
@@ -53,8 +55,8 @@ public:
 private:
 
   // Serial frame ids
-  // const uint8_t comp_to_llc_msg_frame_id {16U};
-  // const uint8_t comp_to_llc_msg_eof_id {17U};
+   const uint8_t comp_to_llc_msg_frame_id {16U};
+   const uint8_t comp_to_llc_msg_eof_id {17U};
 
   const uint8_t llc_to_comp_msg_frame_id {99U};
   const uint8_t llc_to_comp_msg_eof_id {100U};
