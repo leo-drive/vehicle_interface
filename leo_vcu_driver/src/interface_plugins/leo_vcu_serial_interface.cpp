@@ -29,7 +29,8 @@ bool SerialInterface::update_received_frame(
 {
   llc_to_comp_data = llc_to_comp_data_;
   if (!serial_ready) {
-    RCLCPP_WARN(node_->get_logger(), "SERIAL IS NOT READY TO COMMUNICATE!");
+    RCLCPP_WARN_THROTTLE(
+      node_->get_logger(), *node_->get_clock(), 1000, "SERIAL IS NOT READY TO COMMUNICATE!");
   }
   return serial_ready;
 }

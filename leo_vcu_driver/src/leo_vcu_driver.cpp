@@ -278,29 +278,22 @@ void LeoVcuDriver::autoware_to_llc_msg_adapter()
   }
   comp_to_llc_cmd.vehicle_signal_cmd.takeover_request = take_over_requested_ ? 1 : 0;
 
-  // set signal and hazard light status
+  // Set signal and hazard light status
   indicator_adapter_to_llc();
 
-  // set control mode
+  // Set control mode
   control_mode_adapter_to_llc();
 
-  comp_to_llc_cmd.long_cmd.set_long_accel = control_cmd_ptr_->longitudinal.acceleration;
-  comp_to_llc_cmd.long_cmd.set_limit_velocity = control_cmd_ptr_->longitudinal.speed;
+  // Update longitudinal mode
+  long_mode_adapter_to_llc();
 
-  // set headlight and wiper
+  // Set headlight and wiper
   comp_to_llc_cmd.vehicle_signal_cmd.headlight = 0;
   comp_to_llc_cmd.vehicle_signal_cmd.wiper = 0;
 
-  comp_to_llc_cmd.vehicle_signal_cmd.long_mode = enable_long_actuation_mode ? 1 : 0;
-  if (enable_long_actuation_mode) {
-    comp_to_llc_cmd.vehicle_signal_cmd.long_mode = 1;
-    comp_to_llc_cmd.long_cmd_actuation.set_gas_pedal_pos = actuation_cmd_ptr->actuation.accel_cmd;
-    comp_to_llc_cmd.long_cmd_actuation.set_brake_pedal_pos = actuation_cmd_ptr->actuation.brake_cmd;
-  } else {
-    comp_to_llc_cmd.vehicle_signal_cmd.long_mode = 0;
-    comp_to_llc_cmd.long_cmd_actuation.set_gas_pedal_pos = 0.0;
-    comp_to_llc_cmd.long_cmd_actuation.set_brake_pedal_pos = 0.0;
-  }
+  // Set longitudinal acceleration and velocity
+  comp_to_llc_cmd.long_cmd.set_long_accel = control_cmd_ptr_->longitudinal.acceleration;
+  comp_to_llc_cmd.long_cmd.set_limit_velocity = control_cmd_ptr_->longitudinal.speed;
 
   // TODO(ismet): update transform algorithm (tire -> wheel) for golf
   comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad =
@@ -427,6 +420,20 @@ void LeoVcuDriver::gear_adapter_to_llc(const uint8_t & input)
     default: // PARK
       comp_to_llc_cmd.vehicle_signal_cmd.gear = 1;
       break;
+  }
+}
+
+void LeoVcuDriver::long_mode_adapter_to_llc()
+{
+  comp_to_llc_cmd.vehicle_signal_cmd.long_mode = enable_long_actuation_mode ? 1 : 0;
+  if (enable_long_actuation_mode) {
+    comp_to_llc_cmd.vehicle_signal_cmd.long_mode = 1;
+    comp_to_llc_cmd.long_cmd_actuation.set_gas_pedal_pos = actuation_cmd_ptr->actuation.accel_cmd;
+    comp_to_llc_cmd.long_cmd_actuation.set_brake_pedal_pos = actuation_cmd_ptr->actuation.brake_cmd;
+  } else {
+    comp_to_llc_cmd.vehicle_signal_cmd.long_mode = 0;
+    comp_to_llc_cmd.long_cmd_actuation.set_gas_pedal_pos = 0.0;
+    comp_to_llc_cmd.long_cmd_actuation.set_brake_pedal_pos = 0.0;
   }
 }
 
@@ -792,15 +799,18 @@ void LeoVcuDriver::mechanical_error_check(SystemError & latest_system_error) {
                 case 0: case 1: case 2: case 3: case 4: case 5: // ignore bits
                     break;
                 case 6:
-                    RCLCPP_ERROR(this->get_logger(), "Kl75 error.");
+                    RCLCPP_ERROR_THROTTLE(
+                      this->get_logger(), *this->get_clock(), 500, "Kl75 error.");
                     latest_system_error.kl75_error = true;
                     break;
                 case 7:
-                    RCLCPP_ERROR(this->get_logger(), "isMotorRunning Error.");
+                    RCLCPP_ERROR_THROTTLE(
+                      this->get_logger(), *this->get_clock(), 500, "isMotorRunning Error.");
                     latest_system_error.motor_running_error = true;
                     break;
                 default:
-                    RCLCPP_ERROR(this->get_logger(), "Invalid mechanical error message.");
+                    RCLCPP_ERROR_THROTTLE(this->get_logger(),
+                                     *this->get_clock(), 500, "Invalid mechanical error message.");
                     break;
             }
         }
@@ -813,55 +823,68 @@ void LeoVcuDriver::electrical_error_check(SystemError & latest_system_error) {
         if (error_str.data.at(i) == '1') {
             switch (i) {
                 case 4:
-                    RCLCPP_ERROR(this->get_logger(), "PC_HeartBeatError");
+                    RCLCPP_ERROR_THROTTLE(
+                      this->get_logger(), *this->get_clock(), 500, "PC_HeartBeatError");
                     latest_system_error.pc_timeout_error = true;
                     break;
                 case 5:
-                    RCLCPP_ERROR(this->get_logger(), "Brake_HeartBeatError");
+                    RCLCPP_ERROR_THROTTLE(
+                      this->get_logger(), *this->get_clock(), 500, "Brake_HeartBeatError");
                     latest_system_error.brake_timeout_error = true;
                     break;
                 case 6:
-                    RCLCPP_ERROR(this->get_logger(), "Brake_SystemError");
+                    RCLCPP_ERROR_THROTTLE(
+                      this->get_logger(), *this->get_clock(), 500, "Brake_SystemError");
                     latest_system_error.brake_system_error = true;
                     break;
                 case 7:
-                    RCLCPP_ERROR(this->get_logger(), "EPAS_HeartBeatError");
+                    RCLCPP_ERROR_THROTTLE(
+                      this->get_logger(), *this->get_clock(), 500, "EPAS_HeartBeatError");
                     latest_system_error.epas_timeout_error = true;
                     break;
                 case 8:
-                    RCLCPP_ERROR(this->get_logger(), "EPAS_SystemError");
+                    RCLCPP_ERROR_THROTTLE(
+                      this->get_logger(), *this->get_clock(), 500, "EPAS_SystemError");
                     latest_system_error.epas_system_error = true;
                     break;
                 case 9:
-                    // RCLCPP_ERROR(this->get_logger(), "G29_HeartBeatError");
+                    // RCLCPP_ERROR_THROTTLE(this->get_logger(),
+                    // *this->get_clock(), 500, "G29_HeartBeatError");
                     latest_system_error.g29_timeout_error = true;
                     break;
                 case 10:
-                    RCLCPP_ERROR(this->get_logger(), "Throttle_ECU_HeartBeatError");
+                    RCLCPP_ERROR_THROTTLE(
+                      this->get_logger(), *this->get_clock(), 500, "Throttle_ECU_HeartBeatError");
                     latest_system_error.throttle_ecu_timeout_error = true;
                     break;
                 case 11:
-                    RCLCPP_ERROR(this->get_logger(), "BrakePowerError");
+                    RCLCPP_ERROR_THROTTLE(
+                      this->get_logger(), *this->get_clock(), 500, "BrakePowerError");
                     latest_system_error.brake_power_error = true;
                     break;
                 case 12:
-                    RCLCPP_ERROR(this->get_logger(), "EPASPowerError");
+                    RCLCPP_ERROR_THROTTLE(
+                      this->get_logger(), *this->get_clock(), 500, "EPASPowerError");
                     latest_system_error.epas_power_error = true;
                     break;
                 case 13:
-                    RCLCPP_ERROR(this->get_logger(), "By_WirePowerError");
+                    RCLCPP_ERROR_THROTTLE(
+                      this->get_logger(), *this->get_clock(), 500, "By_WirePowerError");
                     latest_system_error.by_wire_power_error = true;
                     break;
                 case 14:
-                    RCLCPP_ERROR(this->get_logger(), "PDS_BusError");
+                    RCLCPP_ERROR_THROTTLE(
+                      this->get_logger(), *this->get_clock(), 500, "PDS_BusError");
                     latest_system_error.pds_bus_error = true;
                     break;
                 case 15:
-                    //RCLCPP_ERROR(this->get_logger(), "PDS_HearBeatError");
+                    RCLCPP_ERROR_THROTTLE(
+                      this->get_logger(), *this->get_clock(), 500, "PDS_HearBeatError");
                     latest_system_error.pds_timeout_error = true;
                     break;
                 default:
-                    RCLCPP_ERROR(this->get_logger(), "Invalid error message.");
+                    RCLCPP_ERROR_THROTTLE(
+                      this->get_logger(), *this->get_clock(), 500, "Invalid error message.");
                     break;
             }
         }

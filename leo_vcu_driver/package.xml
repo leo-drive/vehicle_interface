@@ -26,6 +26,7 @@
   <depend>vehicle_info_util</depend>
   <depend>pluginlib</depend>
   <depend>leo_vcu_msgs</depend>
+  <depend>ros2_socketcan</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

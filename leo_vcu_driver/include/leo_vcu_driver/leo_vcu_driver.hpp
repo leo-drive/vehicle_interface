@@ -179,6 +179,10 @@ public:
    */
   void indicator_adapter_to_llc();
   /**
+   * @brief It converts the longitudinal data which is taken from autoware universe wrt LLC messages.
+   */
+  void long_mode_adapter_to_llc();
+  /**
    * @brief It is the meta converter function that takes all data from LLC and convert them to
    * Autoware messages which are defined as global variable.
    */

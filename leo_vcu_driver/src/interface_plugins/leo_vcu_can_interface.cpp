@@ -34,8 +34,8 @@ bool CanInterface::update_received_frame(
 {
   if(can_frame_sub_->get_publisher_count() < 1)
   {
-    RCLCPP_WARN(
-      node_->get_logger(), "WAITING FOR CAN TOPIC SUBSCRIPTION!");
+    RCLCPP_WARN_THROTTLE(
+      node_->get_logger(), *node_->get_clock(), 1000, "WAITING FOR CAN TOPIC SUBSCRIPTION!");
     return false;
   }
   llc_to_comp_data = llc_to_comp_data_;
@@ -47,8 +47,8 @@ void CanInterface::llc_publisher(
 {
   if(can_frame_pub_->get_subscription_count() < 1)
   {
-    RCLCPP_WARN(
-      node_->get_logger(), "CAN RECEIVER IS NOT READY!");
+    RCLCPP_WARN_THROTTLE(
+      node_->get_logger(), *node_->get_clock(), 1000 ,"CAN RECEIVER IS NOT READY!");
     return;
   }
 
