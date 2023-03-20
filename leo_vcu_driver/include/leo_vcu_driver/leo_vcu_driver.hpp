@@ -108,7 +108,7 @@ public:
   void actuator_cmd_callback(
     const tier4_vehicle_msgs::msg::ActuationCommandStamped::ConstSharedPtr msg);
 
-  //Hand Brake, headlights and raw control commands are not published yet by Autoware.Universe
+  /* Hand Brake, headlights and raw control commands are not published yet by Autoware.Universe */
   /**
    * @brief It is callback function which takes data from "/" topic from Autoware Universe
 
@@ -254,6 +254,16 @@ private:
    * @brief This function updates PC timeout error with latest updates
    */
   void checkPCTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+  /**
+   * @brief It checks mechanical errors from llc message. (Motor Running, KL75)
+   */
+  void mechanical_error_check(
+    leo_vcu_driver::vehicle_interface::SystemError & latest_system_error);
+  /**
+   * @brief It checks electrical errors from llc message. (EPAS, BBW, DBW etc.)
+   */
+  void electrical_error_check(
+    leo_vcu_driver::vehicle_interface::SystemError & latest_system_error);
 
   pluginlib::ClassLoader<leo_vcu_driver::LeoVcuDriverPlugin> plugin_loader_;
   std::shared_ptr<leo_vcu_driver::LeoVcuDriverPlugin> driver_interface_plugin_;
@@ -295,7 +305,15 @@ private:
   float current_emergency_acceleration_{0.0};
   bool take_over_requested_{false};
 
-  /* subscribers */
+  // Vehicle info params
+  vehicle_info_util::VehicleInfo vehicle_info_;
+
+  // Diagnostic Updater Object
+  diagnostic_updater::Updater updater_;
+
+  leo_vcu_driver::vehicle_interface::SystemError system_error_diagnostics_;
+
+  /* Subscribers */
   // From Autoware
   rclcpp::Subscription<autoware_auto_control_msgs::msg::AckermannControlCommand>::SharedPtr
     control_cmd_sub_;
@@ -324,7 +342,7 @@ private:
    raw_control_cmd_sub_;
   */
 
-  /* publishers */
+  /* Publishers */
   // To Autoware
   rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::ControlModeReport>::SharedPtr
     control_mode_pub_;
@@ -347,8 +365,7 @@ private:
   // Timer
   rclcpp::TimerBase::SharedPtr tim_data_sender_;
 
-  /* ros params */
-  vehicle_info_util::VehicleInfo vehicle_info_;
+  /* Ros Params */
 
   std::string interface_mod_;
   std::string base_frame_id_;
@@ -369,42 +386,11 @@ private:
   float add_emergency_acceleration_per_second{};
   bool enable_long_actuation_mode{};
 
-  // Diagnostic Updater Object
-  diagnostic_updater::Updater updater_;
-
-  // Define a struct to store autonomous system faults
-  struct SystemError
-  {
-    bool motor_running_error = false;
-    bool kl75_error = false;
-    bool pds_timeout_error = false;
-    bool pds_bus_error = false;
-    bool by_wire_power_error = false;
-    bool epas_power_error = false;
-    bool brake_power_error = false;
-    bool throttle_ecu_timeout_error = false;
-    bool g29_timeout_error = false;
-    bool epas_system_error = false;
-    bool epas_timeout_error = false;
-    bool brake_system_error = false;
-    bool brake_timeout_error = false;
-    bool pc_timeout_error = false;
-  };
-
-  SystemError system_error_diagnostics_;
-  /**
-   * @brief It checks mechanical errors from llc message. (Motor Running, KL75)
-   */
-  void mechanical_error_check(SystemError & latest_system_error);
-  /**
-   * @brief It checks electrical errors from llc message. (EPAS, BBW, DBW etc.)
-   */
-  void electrical_error_check(SystemError & latest_system_error);
-
   // TODO(ismet): update w/bayram
   std::vector<float> wheel_angle_{-700.0, -650.0, -600.0, -550.0, -500.0, -450.0, -350.0, -250.0,
                                   -150.0, -50.0,  -25.0,  -10.0,  10.0,   25.0,   50.0,   150.0,
                                   250.0,  350.0,  450.0,  500.0,  550.0,  600.0,  650.0,  700.0};
+
   std::vector<float> steering_angle_{
     -0.64993461705671285,  -0.61082144199407651,  -0.57803454274344535,  -0.54093534890626638,
     -0.49747436744167056,  -0.44171141830811872,  -0.35975359145439723,  -0.25783474728117478,

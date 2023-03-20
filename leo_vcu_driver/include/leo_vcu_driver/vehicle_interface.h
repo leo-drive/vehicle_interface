@@ -67,7 +67,7 @@ namespace leo_vcu_driver::vehicle_interface
 
 using namespace std;
 
-// added for universe
+// Added for universe
 struct vehicle_current_state_
 {
   autoware_auto_vehicle_msgs::msg::VelocityReport twist;
@@ -79,10 +79,28 @@ struct vehicle_current_state_
   autoware_auto_vehicle_msgs::msg::HazardLightsReport hazard_msg;
   autoware_auto_vehicle_msgs::msg::HandBrakeReport hand_brake_msg;
   autoware_auto_vehicle_msgs::msg::HeadlightsReport headlight_msg;
-  char * debug_str_last {};
 };
 
-//can msgs
+// Added for to store autonomous system faults
+struct SystemError
+{
+  bool motor_running_error = false;
+  bool kl75_error = false;
+  bool pds_timeout_error = false;
+  bool pds_bus_error = false;
+  bool by_wire_power_error = false;
+  bool epas_power_error = false;
+  bool brake_power_error = false;
+  bool throttle_ecu_timeout_error = false;
+  bool g29_timeout_error = false;
+  bool epas_system_error = false;
+  bool epas_timeout_error = false;
+  bool brake_system_error = false;
+  bool brake_timeout_error = false;
+  bool pc_timeout_error = false;
+};
+
+// Can msgs
 struct LlcCanMsg
 {
   can_msgs::msg::Frame long_cmd_msg;
@@ -127,8 +145,7 @@ struct __attribute__((packed)) VehicleDynamicsInfoData{
   float steering_wheel_angle;
 };
 
-//can commands
-
+// Can commands
 struct __attribute__((packed)) FrontWheelCommandData{
   float set_front_wheel_angle_rad;
   float set_front_wheel_angle_rate;
@@ -155,6 +172,7 @@ struct __attribute__((packed)) LongitudinalCommandData{
   float set_limit_velocity;
 };
 
+// From LLC
 struct __attribute__((packed)) LlcToCompData {
   /* Serial Frame and Counter Info */
   uint8_t frame_id1;
@@ -174,6 +192,7 @@ struct __attribute__((packed)) LlcToCompData {
   uint8_t eof_id2;
 };
 
+// To LLC
 struct __attribute__((packed)) CompToLlcCmd {
   /* Serial Frame and Counter Cmd */
   uint8_t frame_id1;

@@ -30,17 +30,24 @@ public:
 
   leo_vcu_driver::vehicle_interface::LlcToCompData llc_to_comp_data_ {};
 
+  // To LLC ROS 2 message
   leo_vcu_driver::vehicle_interface::LlcCanMsg llc_can_msgs;
-  can_msgs::msg::Frame::SharedPtr received_can_frame_msg_;
 
   void initialize(rclcpp::Node * node) override;
-
+  /**
+   * @brief It updates driver' can frame according to the Socket Can ROS subscriber' received data.
+   */
   bool update_received_frame(
     leo_vcu_driver::vehicle_interface::LlcToCompData & llc_to_comp_data) override;
-
+  /**
+   * @brief It sends data from driver CAN interface to low level controller.
+   */
   void llc_publisher(
     const leo_vcu_driver::vehicle_interface::CompToLlcCmd & comp_to_llc_cmd) override;
-
+  /**
+   * @brief It is callback function which takes vehicle data from "/from_can_bus" topic in
+   * ROS 2 Socket CAN.
+   */
   void can_receive_callback(can_msgs::msg::Frame::SharedPtr msg);
 
 private:

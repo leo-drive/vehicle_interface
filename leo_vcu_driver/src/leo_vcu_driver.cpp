@@ -20,11 +20,12 @@
 #include <utility>
 
 using SubAllocT = rclcpp::SubscriptionOptionsWithAllocator<std::allocator<void>>;
-using namespace std::placeholders;
-
 using rcl_interfaces::msg::ParameterDescriptor;
 using rclcpp::ParameterValue;
+
 using namespace std::chrono_literals;
+using namespace std::placeholders;
+using namespace leo_vcu_driver::vehicle_interface;
 
 LeoVcuDriver::LeoVcuDriver()
 : Node("leo_vcu_driver"),
@@ -37,15 +38,16 @@ LeoVcuDriver::LeoVcuDriver()
   base_frame_id_ = declare_parameter("base_frame_id", "base_link");
   command_timeout_ms_ = declare_parameter("command_timeout_ms", 1000.0);
   data_send_rate_ = declare_parameter("data_send_rate", 100.0);
-  /* parameters for vehicle specifications */
+
+  /* Parameters for vehicle specifications */
   wheel_base_ = static_cast<float>(vehicle_info_.wheel_base_m);
   reverse_gear_enabled_ = declare_parameter("reverse_gear_enabled", true);
   gear_shift_velocity_threshold =
     static_cast<float>(declare_parameter("gear_shift_velocity_threshold", 0.1));
   max_steering_wheel_angle =
-    static_cast<float>(declare_parameter("max_steering_wheel_angle", 750.0));
+    static_cast<float>(declare_parameter("max_steering_wheel_angle", 480.0));
   min_steering_wheel_angle =
-    static_cast<float>(declare_parameter("min_steering_wheel_angle", -750.0));
+    static_cast<float>(declare_parameter("min_steering_wheel_angle", -480.0));
   max_steering_wheel_angle_rate =
     static_cast<float>(declare_parameter("max_steering_wheel_angle_rate", 300.0));
   check_steering_angle_rate = declare_parameter("check_steering_angle_rate", true);
@@ -211,7 +213,7 @@ void LeoVcuDriver::engage_cmd_callback(
 void LeoVcuDriver::gate_mode_cmd_callback(
   const tier4_control_msgs::msg::GateMode::ConstSharedPtr msg)
 {
-  gate_mode_cmd_ptr = msg;  // AUTO = 0, EXTERNAL = 1
+  gate_mode_cmd_ptr = msg;  // AUTO = 1, EXTERNAL = 0
 }
 
 void LeoVcuDriver::actuator_cmd_callback(
@@ -382,7 +384,7 @@ void LeoVcuDriver::indicator_adapter_to_llc()
 }
 
 uint8_t LeoVcuDriver::gear_adapter_to_autoware(
-  uint8_t & input)  // TODO(berkay): Check here! Maybe we can make it faster!
+  uint8_t & input)
 {
   switch (input) {
     case 1: // PARK
@@ -654,7 +656,7 @@ void LeoVcuDriver::llc_interface_adapter()
   }
 
   // TODO(ismet): update vehicle limits w/ Bayram
-  /* check the steering wheel angle and steering wheel angle rate limits */
+  /* Check the steering wheel angle and steering wheel angle rate limits */
   if (comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad < min_steering_wheel_angle ||
       comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad > max_steering_wheel_angle)
   {
