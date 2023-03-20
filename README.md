@@ -21,9 +21,9 @@ $ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
 ## 1. Serial Communication
 
-usb-naming script is used to assign a name to communication port. After go to the configs directory run the command:
+usb-naming script is used to assign a name to communication port. After go to the scripts directory run the command:
 ```
-$ cd configs
+$ cd scripts
 $ sudo ./usb-naming.sh
 ```
 
@@ -40,7 +40,11 @@ $ ros2 launch leo_vcu_driver leo_vcu_driver.launch.xml interface_mod:=SERIAL
 
 ## 2. CAN Communication
 
-WIP
+can-configure script is used to bring up SocketCAN network interface, each time you plug it in or boot up. After go to the scripts directory run the command:
+```
+$ cd scripts
+$ sudo ./can-configure.sh
+```
 ### Launch Driver (With CAN Interface)
 ```
 $ ros2 launch leo_vcu_driver leo_vcu_driver.launch.xml interface_mod:=CAN

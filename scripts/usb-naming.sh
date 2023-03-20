@@ -17,11 +17,3 @@ chmod 777 /dev/ttyLLC
 
 cd ${HOME}/
 
-#ls /dev/tty*
-#lsusb
-#udevadm info -a -n /dev/ttyUSB0 | grep '{serial}'
-
-#sudo gedit /etc/udev/rules.d/my-devices.rules
-#sudo udevadm control --reload-rules
-#sudo udevadm trigger
-#sudo /etc/init.d/udev restart
