@@ -237,23 +237,23 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
 
   // set hazard lights status
   indicator_adapter_to_autoware(
-    static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status.blinker));
+    static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.blinker));
 
   // set gear status
   current_state.gear_report_msg.report = gear_adapter_to_autoware(
-    static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status.gear));
+    static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.gear));
 
   // set control_mode status
   current_state.control_mode_report.mode = control_mode_adapter_to_autoware(
-    static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status.mode));
+    static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.mode));
 
   // set headlight status
   current_state.headlight_msg.report = headlight_adapter_to_autoware(
-    static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status.headlight));
+    static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.headlight));
 
   // set handbrake status
   current_state.hand_brake_msg.report =
-    static_cast<uint8_t&>(llc_to_comp_data_.vehicle_sgl_status.hand_brake);
+    static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.hand_brake);
 
   // error info msgs
   mechanical_error_check(latest_system_error);
@@ -306,7 +306,7 @@ void LeoVcuDriver::autoware_to_llc_msg_adapter()
     comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad;
 }
 
-uint8_t LeoVcuDriver::headlight_adapter_to_autoware(uint8_t & input)
+uint8_t LeoVcuDriver::headlight_adapter_to_autoware(uint8_t input) const
 {
   if (input == 2) {
     return autoware_auto_vehicle_msgs::msg::HeadlightsReport::ENABLE_LOW;
@@ -331,7 +331,7 @@ void LeoVcuDriver::control_mode_adapter_to_llc()
   }
 }
 
-uint8_t LeoVcuDriver::control_mode_adapter_to_autoware(uint8_t & input)
+uint8_t LeoVcuDriver::control_mode_adapter_to_autoware(uint8_t input) const
 {
   if (input == 1) {
     return autoware_auto_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS;
@@ -342,7 +342,7 @@ uint8_t LeoVcuDriver::control_mode_adapter_to_autoware(uint8_t & input)
   }
 }
 
-void LeoVcuDriver::indicator_adapter_to_autoware(uint8_t & input)
+void LeoVcuDriver::indicator_adapter_to_autoware(const uint8_t input)
 {
   if (input == 0) {
     current_state.hazard_msg.report = autoware_auto_vehicle_msgs::msg::HazardLightsReport::DISABLE;
@@ -383,8 +383,7 @@ void LeoVcuDriver::indicator_adapter_to_llc()
   }
 }
 
-uint8_t LeoVcuDriver::gear_adapter_to_autoware(
-  uint8_t & input)
+uint8_t LeoVcuDriver::gear_adapter_to_autoware(const uint8_t input) const
 {
   switch (input) {
     case 1: // PARK
@@ -400,7 +399,7 @@ uint8_t LeoVcuDriver::gear_adapter_to_autoware(
   }
 }
 
-void LeoVcuDriver::gear_adapter_to_llc(const uint8_t & input)
+void LeoVcuDriver::gear_adapter_to_llc(const uint8_t input)
 {
   switch (input) {
     case 1: // NEUTRAL
