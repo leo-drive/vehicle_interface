@@ -118,7 +118,7 @@ void CanInterface::can_receive_callback(can_msgs::msg::Frame::SharedPtr msg)
                   sizeof(llc_to_comp_data_.error_info));
     }
     break;
-    case 1024: case 1025: case 1026: case 1027: // sending frame ids
+    case 1024: case 1025: case 1026: case 1027: case 1046: // sending frame ids
       break;
     default:
       RCLCPP_ERROR(node_->get_logger(), "Invalid CanId: %d", msg->id);

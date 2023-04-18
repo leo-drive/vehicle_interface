@@ -259,7 +259,7 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
   current_state.actuation_status_msg.status.accel_status =
           static_cast<float>(llc_to_comp_data_.motion_info.throttle) / 100.0;
   current_state.actuation_status_msg.status.brake_status =
-          static_cast<float>(llc_to_comp_data_.motion_info.brake) / 100.0;
+          (static_cast<float>(llc_to_comp_data_.motion_info.brake) - 1) / 100.0;
   // error info msgs
   mechanical_error_check(latest_system_error);
   electrical_error_check(latest_system_error);
@@ -304,10 +304,7 @@ void LeoVcuDriver::autoware_to_llc_msg_adapter()
 
   // TODO(ismet): update transform algorithm (tire -> wheel) for golf
   comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad = -1*control_cmd_ptr_->lateral.steering_tire_angle;
-  comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rate =
-    steering_tire_to_steering_wheel_angle(control_cmd_ptr_->lateral.steering_tire_angle +
-                                          control_cmd_ptr_->lateral.steering_tire_rotation_rate) -
-    comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad;
+  comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rate = control_cmd_ptr_->lateral.steering_tire_rotation_rate;
 }
 
 uint8_t LeoVcuDriver::headlight_adapter_to_autoware(uint8_t input) const
@@ -484,88 +481,6 @@ void LeoVcuDriver::llc_to_state_report_msg_adapter()
   vehicle_state_report_msg_.motor_temp = static_cast<uint8_t>(llc_to_comp_data_.motor_info.temp);
   vehicle_state_report_msg_.motor_rpm = static_cast<uint16_t>(llc_to_comp_data_.motor_info.rpm);
   vehicle_state_report_msg_.kl75 = static_cast<uint8_t>(llc_to_comp_data_.motor_info.kl75);
-}
-
-size_t compare(std::vector<float> & vec, double value)
-{
-  double dist = std::numeric_limits<double>::max();
-  size_t output = 0;
-  for (size_t i = 0; i < vec.size(); i++) {
-    if (dist > abs(vec.at(i) - value)) {
-      dist = abs(vec.at(i) - value);
-      output = i;
-    }
-  }
-  return output;
-}
-
-float LeoVcuDriver::steering_tire_to_steering_wheel_angle(
-  float input)  // rad input degree output, maybe constants needs re-calculation
-{               // TODO: If input or output is out of boundary, what we will do?
-  input = input - steering_offset;
-  float output = 0.0;
-  size_t other_idx = 0;
-  if (input < steering_angle_.at(0)) {
-    input = steering_angle_.at(0);
-  }
-  if (input > steering_angle_.at(steering_angle_.size() - 1)) {
-    input = steering_angle_.at(steering_angle_.size() - 1);
-  }
-
-  size_t nearest_idx = compare(steering_angle_, input);
-
-  if (input > steering_angle_.at(nearest_idx)) {
-    other_idx = nearest_idx + 1;
-  } else if (input < steering_angle_.at(nearest_idx)) {
-    other_idx = nearest_idx - 1;
-  } else {
-    other_idx = nearest_idx;
-  }
-
-  if (other_idx == nearest_idx) {
-    output = wheel_angle_.at(nearest_idx);
-  } else {
-    float ratio = (input - steering_angle_.at(nearest_idx)) /
-                  (steering_angle_.at(other_idx) - steering_angle_.at(nearest_idx));
-    output = wheel_angle_.at(nearest_idx) +
-             ratio * (wheel_angle_.at(other_idx) - wheel_angle_.at(nearest_idx));
-  }
-
-  return -output;
-}
-
-float LeoVcuDriver::steering_wheel_to_steering_tire_angle(
-  float input)  // degree input rad output, maybe constants needs re-calculation
-{               // TODO: If input or output is out of boundary, what we will do?
-  input = -input;
-  float output = 0.0;
-  size_t other_idx = 0;
-  if (input < wheel_angle_.at(0)) {
-    input = wheel_angle_.at(0);
-  }
-  if (input > wheel_angle_.at(wheel_angle_.size() - 1)) {
-    input = wheel_angle_.at(wheel_angle_.size() - 1);
-  }
-
-  size_t nearest_idx = compare(wheel_angle_, input);
-
-  if (input > wheel_angle_.at(nearest_idx)) {
-    other_idx = nearest_idx + 1;
-  } else if (input < wheel_angle_.at(nearest_idx)) {
-    other_idx = nearest_idx - 1;
-  } else {
-    other_idx = nearest_idx;
-  }
-
-  if (other_idx == nearest_idx) {
-    output = steering_angle_.at(nearest_idx);
-  } else {
-    float ratio = (input - wheel_angle_.at(nearest_idx)) /
-                  (wheel_angle_.at(other_idx) - wheel_angle_.at(nearest_idx));
-    output = steering_angle_.at(nearest_idx) +
-             ratio * (steering_angle_.at(other_idx) - steering_angle_.at(nearest_idx));
-  }
-  return std::clamp(output + steering_offset,steering_angle_.at(0),steering_angle_.back());
 }
 
 void LeoVcuDriver::llc_interface_adapter()
