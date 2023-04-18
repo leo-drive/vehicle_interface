@@ -114,6 +114,8 @@ LeoVcuDriver::LeoVcuDriver()
   steering_wheel_status_pub_ =
     create_publisher<tier4_vehicle_msgs::msg::SteeringWheelStatusStamped>(
       "/vehicle/status/steering_wheel_status", 1);
+  actuation_status_pub_ = create_publisher<tier4_vehicle_msgs::msg::ActuationStatusStamped>(
+          "/vehicle/status/actuation_status", rclcpp::QoS{1});
   llc_error_pub_ = create_publisher<std_msgs::msg::String>("/interface/status/llc_status", 1);
   hand_brake_pub_ = create_publisher<autoware_auto_vehicle_msgs::msg::HandBrakeReport>(
           "/vehicle/status/hand_brake", rclcpp::QoS{1});
@@ -232,8 +234,7 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
     static_cast<float>(llc_to_comp_data_.vehicle_dyn_info.steering_wheel_angle);
 
   // TODO(ismet): update algorithm for golf vehicle w/ bayram
-  current_state.steering_tire_status_msg.steering_tire_angle =
-    steering_wheel_to_steering_tire_angle(current_state.steering_wheel_status_msg.data);
+  current_state.steering_tire_status_msg.steering_tire_angle = -current_state.steering_wheel_status_msg.data;
 
   // set hazard lights status
   indicator_adapter_to_autoware(
@@ -254,7 +255,11 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
   // set handbrake status
   current_state.hand_brake_msg.report =
     static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.hand_brake);
-
+  // set actuation status
+  current_state.actuation_status_msg.status.accel_status =
+          static_cast<float>(llc_to_comp_data_.motion_info.throttle) / 100.0;
+  current_state.actuation_status_msg.status.brake_status =
+          static_cast<float>(llc_to_comp_data_.motion_info.brake) / 100.0;
   // error info msgs
   mechanical_error_check(latest_system_error);
   electrical_error_check(latest_system_error);
@@ -298,8 +303,7 @@ void LeoVcuDriver::autoware_to_llc_msg_adapter()
   comp_to_llc_cmd.long_cmd.set_limit_velocity = control_cmd_ptr_->longitudinal.speed;
 
   // TODO(ismet): update transform algorithm (tire -> wheel) for golf
-  comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad =
-          steering_tire_to_steering_wheel_angle(control_cmd_ptr_->lateral.steering_tire_angle);
+  comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad = -1*control_cmd_ptr_->lateral.steering_tire_angle;
   comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rate =
     steering_tire_to_steering_wheel_angle(control_cmd_ptr_->lateral.steering_tire_angle +
                                           control_cmd_ptr_->lateral.steering_tire_rotation_rate) -
@@ -429,8 +433,10 @@ void LeoVcuDriver::long_mode_adapter_to_llc()
   comp_to_llc_cmd.vehicle_signal_cmd.long_mode = enable_long_actuation_mode ? 1 : 0;
   if (enable_long_actuation_mode) {
     comp_to_llc_cmd.vehicle_signal_cmd.long_mode = 1;
-    comp_to_llc_cmd.long_cmd_actuation.set_gas_pedal_pos = actuation_cmd_ptr->actuation.accel_cmd;
-    comp_to_llc_cmd.long_cmd_actuation.set_brake_pedal_pos = actuation_cmd_ptr->actuation.brake_cmd;
+    comp_to_llc_cmd.long_cmd_actuation.set_gas_pedal_pos =
+            static_cast<uint8_t>(actuation_cmd_ptr->actuation.accel_cmd * 100);
+    comp_to_llc_cmd.long_cmd_actuation.set_brake_pedal_pos =
+            static_cast<uint8_t>(actuation_cmd_ptr->actuation.brake_cmd * 100);
   } else {
     comp_to_llc_cmd.vehicle_signal_cmd.long_mode = 0;
     comp_to_llc_cmd.long_cmd_actuation.set_gas_pedal_pos = 0.0;
@@ -789,6 +795,11 @@ void LeoVcuDriver::publish_current_vehicle_state()
   {
     current_state.headlight_msg.stamp = header.stamp;
     headlights_pub_->publish(current_state.headlight_msg);
+  }
+  /* publish actuation (brake and accel pedal status) */
+  {
+    current_state.actuation_status_msg.header = header;
+    actuation_status_pub_->publish(current_state.actuation_status_msg);
   }
 }
 

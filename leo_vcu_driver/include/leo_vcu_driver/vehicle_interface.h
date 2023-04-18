@@ -72,6 +72,7 @@ struct vehicle_current_state_
 {
   autoware_auto_vehicle_msgs::msg::VelocityReport twist;
   tier4_vehicle_msgs::msg::SteeringWheelStatusStamped steering_wheel_status_msg;
+  tier4_vehicle_msgs::msg::ActuationStatusStamped actuation_status_msg;
   autoware_auto_vehicle_msgs::msg::SteeringReport steering_tire_status_msg;
   autoware_auto_vehicle_msgs::msg::ControlModeReport control_mode_report;
   autoware_auto_vehicle_msgs::msg::GearReport gear_report_msg;

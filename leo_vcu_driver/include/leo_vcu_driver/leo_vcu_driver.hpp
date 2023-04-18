@@ -356,6 +356,7 @@ private:
     hazard_lights_status_pub_;
   rclcpp::Publisher<tier4_vehicle_msgs::msg::SteeringWheelStatusStamped>::SharedPtr
     steering_wheel_status_pub_;
+  rclcpp::Publisher<tier4_vehicle_msgs::msg::ActuationStatusStamped>::SharedPtr actuation_status_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr llc_error_pub_;
 
   rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::HandBrakeReport>::SharedPtr hand_brake_pub_;
