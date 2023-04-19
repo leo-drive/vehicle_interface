@@ -433,7 +433,7 @@ void LeoVcuDriver::long_mode_adapter_to_llc()
     comp_to_llc_cmd.long_cmd_actuation.set_gas_pedal_pos =
             static_cast<uint8_t>(actuation_cmd_ptr->actuation.accel_cmd * 100);
     comp_to_llc_cmd.long_cmd_actuation.set_brake_pedal_pos =
-            static_cast<uint8_t>(actuation_cmd_ptr->actuation.brake_cmd * 100);
+            static_cast<uint8_t>(actuation_cmd_ptr->actuation.brake_cmd * 100) + 1;
   } else {
     comp_to_llc_cmd.vehicle_signal_cmd.long_mode = 0;
     comp_to_llc_cmd.long_cmd_actuation.set_gas_pedal_pos = 0.0;
@@ -501,7 +501,7 @@ void LeoVcuDriver::llc_interface_adapter()
   if (!autoware_data_ready())
   {
     //TODO(ismet): add what we need to send to CAN when autoware data is not ready
-    RCLCPP_WARN_ONCE(get_logger(), "Data from Autoware is not ready!");
+    RCLCPP_WARN_THROTTLE(get_logger(), *this->get_clock(), 1000, "Data from Autoware is not ready!");
     return;
   }
 
