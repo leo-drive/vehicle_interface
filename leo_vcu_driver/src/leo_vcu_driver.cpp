@@ -53,7 +53,6 @@ LeoVcuDriver::LeoVcuDriver()
   check_steering_angle_rate = declare_parameter("check_steering_angle_rate", true);
   enable_emergency = declare_parameter("enable_emergency", true);
   enable_cmd_timeout_emergency = declare_parameter("enable_cmd_timeout_emergency", true);
-  steering_offset = static_cast<float>(declare_parameter("steering_offset", 0.0));
   emergency_stop_acceleration =
     static_cast<float>(declare_parameter("emergency_stop_acceleration", -5.0));
   soft_stop_acceleration = static_cast<float>(declare_parameter("soft_stop_acceleration", -1.5));

@@ -381,7 +381,6 @@ private:
   bool check_steering_angle_rate{};
   bool enable_emergency{};
   bool enable_cmd_timeout_emergency{};
-  float steering_offset{0.0};
   float emergency_stop_acceleration{};
   float soft_stop_acceleration{};         // [m/s^2]
   float add_emergency_acceleration_per_second{};
