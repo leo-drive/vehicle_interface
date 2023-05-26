@@ -150,7 +150,7 @@ public:
   /**
    * @brief It converts the gear data which is taken from LLC wrt Autoware Universe messages.
    */
-  uint8_t gear_adapter_to_autoware(const uint8_t input) const;
+  uint8_t gear_adapter_to_autoware(const uint8_t input);
   /**
    * @brief It converts the gear data which is taken from autoware universe wrt LLC messages.
    */
@@ -291,6 +291,7 @@ private:
   /* Variables */
   rclcpp::Time control_command_received_time_;
   autoware_auto_system_msgs::msg::HazardStatusStamped::ConstSharedPtr hazard_status_stamped_;
+  bool is_forward_direction_{true};
 
   // Current state of vehicle (Got from LLC)
   leo_vcu_driver::vehicle_interface::vehicle_current_state_ current_state;

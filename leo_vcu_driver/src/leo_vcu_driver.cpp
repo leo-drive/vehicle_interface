@@ -229,6 +229,10 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
 
   current_state.twist.longitudinal_velocity =
     static_cast<float>(llc_to_comp_data_.vehicle_dyn_info.linear_vehicle_velocity);
+  if(!is_forward_direction_)
+  {
+    current_state.twist.longitudinal_velocity *= -1;
+  }
   current_state.steering_wheel_status_msg.data =
     static_cast<float>(llc_to_comp_data_.vehicle_dyn_info.steering_wheel_angle);
 
@@ -383,13 +387,17 @@ void LeoVcuDriver::indicator_adapter_to_llc()
   }
 }
 
-uint8_t LeoVcuDriver::gear_adapter_to_autoware(const uint8_t input) const
+uint8_t LeoVcuDriver::gear_adapter_to_autoware(const uint8_t input)
 {
+  is_forward_direction_ = true;
   switch (input) {
     case 1: // PARK
       return 22;
     case 2: // REVERSE
+    {
+      is_forward_direction_ = false;
       return 20;
+    }
     case 3: // NEUTRAL
       return 1;
     case 4: // DRIVE
