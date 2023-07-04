@@ -10,9 +10,9 @@
     min_steering_wheel_angle: -480.0
     max_steering_wheel_angle_rate: 300.0
     check_steering_angle_rate: false
-    enable_emergency: true
+    enable_emergency: false
     emergency_stop_acceleration: -5.0
     soft_stop_acceleration: -2.5
     add_emergency_acceleration_per_second: -1.5
-    enable_cmd_timeout_emergency: true
-    enable_long_actuation_mode: false
+    enable_cmd_timeout_emergency: false
+    enable_long_actuation_mode: true

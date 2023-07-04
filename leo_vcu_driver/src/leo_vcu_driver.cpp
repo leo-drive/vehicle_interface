@@ -305,7 +305,16 @@ void LeoVcuDriver::autoware_to_llc_msg_adapter()
   comp_to_llc_cmd.long_cmd.set_long_accel = control_cmd_ptr_->longitudinal.acceleration;
   comp_to_llc_cmd.long_cmd.set_limit_velocity = control_cmd_ptr_->longitudinal.speed;
 
-  // TODO(ismet): update transform algorithm (tire -> wheel) for golf
+  // If the handbrake is enabled or gear is in not drive, sent brake to llc
+  if(current_state.hand_brake_msg.report == 1 || current_state.gear_report_msg.report != 2){
+    comp_to_llc_cmd.long_cmd.set_long_accel = soft_stop_acceleration;
+    comp_to_llc_cmd.long_cmd.set_limit_velocity = 0.0;
+    if(enable_long_actuation_mode){
+        comp_to_llc_cmd.long_cmd_actuation.set_brake_pedal_pos = 50;
+    }
+  }
+
+  // TODO(ismet): update transform algorithm (tire -> wheel) for golf w/ berkay
   comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad = -1*control_cmd_ptr_->lateral.steering_tire_angle;
   comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rate = control_cmd_ptr_->lateral.steering_tire_rotation_rate;
 }
@@ -642,7 +651,6 @@ bool LeoVcuDriver::autoware_data_ready()
       output = false;
     }
   }
-
   return output;
 }
 
