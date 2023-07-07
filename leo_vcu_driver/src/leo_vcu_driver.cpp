@@ -311,6 +311,7 @@ void LeoVcuDriver::autoware_to_llc_msg_adapter()
     comp_to_llc_cmd.long_cmd.set_limit_velocity = 0.0;
     if(enable_long_actuation_mode){
         comp_to_llc_cmd.long_cmd_actuation.set_brake_pedal_pos = 50;
+        comp_to_llc_cmd.long_cmd_actuation.set_gas_pedal_pos = 0;
     }
   }
 
