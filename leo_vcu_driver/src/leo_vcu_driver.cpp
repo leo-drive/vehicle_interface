@@ -114,12 +114,12 @@ LeoVcuDriver::LeoVcuDriver()
     create_publisher<tier4_vehicle_msgs::msg::SteeringWheelStatusStamped>(
       "/vehicle/status/steering_wheel_status", 1);
   actuation_status_pub_ = create_publisher<tier4_vehicle_msgs::msg::ActuationStatusStamped>(
-          "/vehicle/status/actuation_status", rclcpp::QoS{1});
+    "/vehicle/status/actuation_status", rclcpp::QoS{1});
   llc_error_pub_ = create_publisher<std_msgs::msg::String>("/interface/status/llc_status", 1);
   hand_brake_pub_ = create_publisher<autoware_auto_vehicle_msgs::msg::HandBrakeReport>(
-          "/vehicle/status/hand_brake", rclcpp::QoS{1});
+    "/vehicle/status/hand_brake", rclcpp::QoS{1});
   headlights_pub_ = create_publisher<autoware_auto_vehicle_msgs::msg::HeadlightsReport>(
-          "/vehicle/status/headlights", rclcpp::QoS{1});
+    "/vehicle/status/headlights", rclcpp::QoS{1});
   vehicle_state_report_pub_ = create_publisher<leo_vcu_msgs::msg::StateReport>(
     "/vehicle/status/status_report", rclcpp::QoS{1});
 
@@ -141,11 +141,11 @@ LeoVcuDriver::LeoVcuDriver()
   updater_.add("pc_timeout_error", this, &LeoVcuDriver::checkPCTimeoutError);
 
   // Load interface plugin
-  if (interface_mod_ == "CAN"){
+  if (interface_mod_ == "CAN") {
     driver_interface_plugin_ =
       plugin_loader_.createSharedInstance("leo_vcu_driver::can_interface::CanInterface");
     driver_interface_plugin_->initialize(this);
-  } else { // SERIAL
+  } else {  // SERIAL
     driver_interface_plugin_ =
       plugin_loader_.createSharedInstance("leo_vcu_driver::serial_interface::SerialInterface");
     driver_interface_plugin_->initialize(this);
@@ -155,7 +155,6 @@ LeoVcuDriver::LeoVcuDriver()
   const auto period_ns = rclcpp::Rate(data_send_rate_).period();
   tim_data_sender_ = rclcpp::create_timer(
     this, get_clock(), period_ns, std::bind(&LeoVcuDriver::llc_interface_adapter, this));
-
 }
 
 void LeoVcuDriver::onHazardStatusStamped(
@@ -229,23 +228,22 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
 
   current_state.twist.longitudinal_velocity =
     static_cast<float>(llc_to_comp_data_.vehicle_dyn_info.linear_vehicle_velocity);
-  if(!is_forward_direction_)
-  {
+  if (!is_forward_direction_) {
     current_state.twist.longitudinal_velocity *= -1;
   }
   current_state.steering_wheel_status_msg.data =
     static_cast<float>(llc_to_comp_data_.vehicle_dyn_info.steering_wheel_angle);
 
   // TODO(ismet): update algorithm for golf vehicle w/ bayram
-  current_state.steering_tire_status_msg.steering_tire_angle = -current_state.steering_wheel_status_msg.data;
+  current_state.steering_tire_status_msg.steering_tire_angle =
+    -current_state.steering_wheel_status_msg.data;
 
   // set hazard lights status
-  indicator_adapter_to_autoware(
-    static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.blinker));
+  indicator_adapter_to_autoware(static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.blinker));
 
   // set gear status
-  current_state.gear_report_msg.report = gear_adapter_to_autoware(
-    static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.gear));
+  current_state.gear_report_msg.report =
+    gear_adapter_to_autoware(static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.gear));
 
   // set control_mode status
   current_state.control_mode_report.mode = control_mode_adapter_to_autoware(
@@ -260,9 +258,9 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
     static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.hand_brake);
   // set actuation status
   current_state.actuation_status_msg.status.accel_status =
-          static_cast<float>(llc_to_comp_data_.motion_info.throttle) / 100.0;
+    static_cast<float>(llc_to_comp_data_.motion_info.throttle) / 100.0;
   current_state.actuation_status_msg.status.brake_status =
-          (static_cast<float>(llc_to_comp_data_.motion_info.brake) - 1) / 100.0;
+    (static_cast<float>(llc_to_comp_data_.motion_info.brake) - 1) / 100.0;
   // error info msgs
   mechanical_error_check(latest_system_error);
   electrical_error_check(latest_system_error);
@@ -273,14 +271,11 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
 
 void LeoVcuDriver::autoware_to_llc_msg_adapter()
 {
-  if (current_state.gear_report_msg.report != gear_cmd_ptr_->command)
-  {
+  if (current_state.gear_report_msg.report != gear_cmd_ptr_->command) {
     // velocity is low -> the shift can be changed
-    if (std::fabs(current_state.twist.longitudinal_velocity) < gear_shift_velocity_threshold)
-    {
+    if (std::fabs(current_state.twist.longitudinal_velocity) < gear_shift_velocity_threshold) {
       gear_adapter_to_llc(gear_cmd_ptr_->command);
-    } else
-    {
+    } else {
       RCLCPP_WARN(
         get_logger(), "Gear change is not allowed, current_velocity = %f",
         static_cast<double>(current_state.twist.longitudinal_velocity));
@@ -306,18 +301,20 @@ void LeoVcuDriver::autoware_to_llc_msg_adapter()
   comp_to_llc_cmd.long_cmd.set_limit_velocity = control_cmd_ptr_->longitudinal.speed;
 
   // If the handbrake is enabled or gear is in not drive, sent brake to llc
-  if(current_state.hand_brake_msg.report == 1 || current_state.gear_report_msg.report != 2){
+  if (current_state.hand_brake_msg.report == 1 || current_state.gear_report_msg.report != 2) {
     comp_to_llc_cmd.long_cmd.set_long_accel = soft_stop_acceleration;
     comp_to_llc_cmd.long_cmd.set_limit_velocity = 0.0;
-    if(enable_long_actuation_mode){
-        comp_to_llc_cmd.long_cmd_actuation.set_brake_pedal_pos = 50;
-        comp_to_llc_cmd.long_cmd_actuation.set_gas_pedal_pos = 0;
+    if (enable_long_actuation_mode) {
+      comp_to_llc_cmd.long_cmd_actuation.set_brake_pedal_pos = 50;
+      comp_to_llc_cmd.long_cmd_actuation.set_gas_pedal_pos = 0;
     }
   }
 
   // TODO(ismet): update transform algorithm (tire -> wheel) for golf w/ berkay
-  comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad = -1*control_cmd_ptr_->lateral.steering_tire_angle;
-  comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rate = control_cmd_ptr_->lateral.steering_tire_rotation_rate;
+  comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad =
+    -1 * control_cmd_ptr_->lateral.steering_tire_angle;
+  comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rate =
+    control_cmd_ptr_->lateral.steering_tire_rotation_rate;
 }
 
 uint8_t LeoVcuDriver::headlight_adapter_to_autoware(uint8_t input) const
@@ -333,15 +330,25 @@ uint8_t LeoVcuDriver::headlight_adapter_to_autoware(uint8_t input) const
 
 void LeoVcuDriver::control_mode_adapter_to_llc()
 {
+  // Check the current state change or not.
+  VehicleSignalCommandData tmp_signal;
   /* send mode */
   if (!engage_cmd_) {
-    comp_to_llc_cmd.vehicle_signal_cmd.mode = 3;  // DISENGAGED. IT IS PRIOR
+    tmp_signal.mode = 3;  // DISENGAGED. IT IS PRIOR
   } else if (gate_mode_cmd_ptr->data == tier4_control_msgs::msg::GateMode::AUTO) {
-    comp_to_llc_cmd.vehicle_signal_cmd.mode = 1;
+    tmp_signal.mode = 1;
   } else if (gate_mode_cmd_ptr->data == tier4_control_msgs::msg::GateMode::EXTERNAL) {
-    comp_to_llc_cmd.vehicle_signal_cmd.mode = 2;  // MANUAL
+    tmp_signal.mode = 2;  // MANUAL
   } else {
-    comp_to_llc_cmd.vehicle_signal_cmd.mode = 4;  // NOT READY
+    tmp_signal.mode = 4;  // NOT READY
+  }
+
+  const auto & current_mode = current_state.control_mode_report.mode;
+  const bool is_mode_changed = current_mode != tmp_signal.mode;
+  if(is_mode_changed){ // it is parked
+    if(current_state.gear_report_msg.report == autoware_auto_vehicle_msgs::msg::GearReport::PARK){
+          comp_to_llc_cmd.vehicle_signal_cmd = tmp_signal;
+    }
   }
 }
 
@@ -366,31 +373,32 @@ void LeoVcuDriver::indicator_adapter_to_autoware(const uint8_t input)
     current_state.turn_msg.report = autoware_auto_vehicle_msgs::msg::TurnIndicatorsReport::DISABLE;
   } else {
     current_state.hazard_msg.report = autoware_auto_vehicle_msgs::msg::HazardLightsReport::DISABLE;
-    if (input == 1){
+    if (input == 1) {
       current_state.turn_msg.report =
         autoware_auto_vehicle_msgs::msg::TurnIndicatorsReport::ENABLE_LEFT;
     } else {
       current_state.turn_msg.report =
         autoware_auto_vehicle_msgs::msg::TurnIndicatorsReport::ENABLE_RIGHT;
     }
-    }
+  }
 }
 
 void LeoVcuDriver::indicator_adapter_to_llc()
 {
   /* send turn and hazard command */
 
-  if ( hazard_lights_cmd_ptr_->command ==
-        autoware_auto_vehicle_msgs::msg::HazardLightsCommand::ENABLE)  // It is prior!
+  if (
+    hazard_lights_cmd_ptr_->command ==
+    autoware_auto_vehicle_msgs::msg::HazardLightsCommand::ENABLE)  // It is prior!
   {
     comp_to_llc_cmd.vehicle_signal_cmd.blinker = 3;
-  } else if ( turn_indicators_cmd_ptr_->command ==
-             autoware_auto_vehicle_msgs::msg::TurnIndicatorsCommand::ENABLE_LEFT)
-  {
+  } else if (
+    turn_indicators_cmd_ptr_->command ==
+    autoware_auto_vehicle_msgs::msg::TurnIndicatorsCommand::ENABLE_LEFT) {
     comp_to_llc_cmd.vehicle_signal_cmd.blinker = 1;
-  } else if ( turn_indicators_cmd_ptr_->command ==
-             autoware_auto_vehicle_msgs::msg::TurnIndicatorsCommand::ENABLE_RIGHT)
-  {
+  } else if (
+    turn_indicators_cmd_ptr_->command ==
+    autoware_auto_vehicle_msgs::msg::TurnIndicatorsCommand::ENABLE_RIGHT) {
     comp_to_llc_cmd.vehicle_signal_cmd.blinker = 2;
   } else {
     comp_to_llc_cmd.vehicle_signal_cmd.blinker = 0;
@@ -401,18 +409,18 @@ uint8_t LeoVcuDriver::gear_adapter_to_autoware(const uint8_t input)
 {
   is_forward_direction_ = true;
   switch (input) {
-    case 1: // PARK
+    case 1:  // PARK
       return 22;
-    case 2: // REVERSE
+    case 2:  // REVERSE
     {
       is_forward_direction_ = false;
       return 20;
     }
-    case 3: // NEUTRAL
+    case 3:  // NEUTRAL
       return 1;
-    case 4: // DRIVE
+    case 4:  // DRIVE
       return 2;
-    default: // PARK
+    default:  // PARK
       return 22;
   }
 }
@@ -420,23 +428,23 @@ uint8_t LeoVcuDriver::gear_adapter_to_autoware(const uint8_t input)
 void LeoVcuDriver::gear_adapter_to_llc(const uint8_t input)
 {
   switch (input) {
-    case 1: // NEUTRAL
-      comp_to_llc_cmd.vehicle_signal_cmd.gear =  3;
+    case 1:  // NEUTRAL
+      comp_to_llc_cmd.vehicle_signal_cmd.gear = 3;
       break;
-    case 2: // DRIVE
+    case 2:  // DRIVE
       comp_to_llc_cmd.vehicle_signal_cmd.gear = 4;
       break;
-    case 20: // REVERSE
-      if(reverse_gear_enabled_) {
+    case 20:  // REVERSE
+      if (reverse_gear_enabled_) {
         comp_to_llc_cmd.vehicle_signal_cmd.gear = 2;
       } else {
         comp_to_llc_cmd.vehicle_signal_cmd.gear = 1;
       }
       break;
-    case 22: // PARK
+    case 22:  // PARK
       comp_to_llc_cmd.vehicle_signal_cmd.gear = 1;
       break;
-    default: // PARK
+    default:  // PARK
       comp_to_llc_cmd.vehicle_signal_cmd.gear = 1;
       break;
   }
@@ -448,9 +456,9 @@ void LeoVcuDriver::long_mode_adapter_to_llc()
   if (enable_long_actuation_mode) {
     comp_to_llc_cmd.vehicle_signal_cmd.long_mode = 1;
     comp_to_llc_cmd.long_cmd_actuation.set_gas_pedal_pos =
-            static_cast<uint8_t>(actuation_cmd_ptr->actuation.accel_cmd * 100);
+      static_cast<uint8_t>(actuation_cmd_ptr->actuation.accel_cmd * 100);
     comp_to_llc_cmd.long_cmd_actuation.set_brake_pedal_pos =
-            static_cast<uint8_t>(actuation_cmd_ptr->actuation.brake_cmd * 100) + 1;
+      static_cast<uint8_t>(actuation_cmd_ptr->actuation.brake_cmd * 100) + 1;
   } else {
     comp_to_llc_cmd.vehicle_signal_cmd.long_mode = 0;
     comp_to_llc_cmd.long_cmd_actuation.set_gas_pedal_pos = 0.0;
@@ -503,7 +511,7 @@ void LeoVcuDriver::llc_to_state_report_msg_adapter()
 void LeoVcuDriver::llc_interface_adapter()
 {
   // Update data from LLC
-  if (!driver_interface_plugin_->update_received_frame(llc_to_comp_data_)){
+  if (!driver_interface_plugin_->update_received_frame(llc_to_comp_data_)) {
     return;
   }
   llc_to_autoware_msg_adapter();
@@ -515,10 +523,10 @@ void LeoVcuDriver::llc_interface_adapter()
   bool time_out = false;
   const rclcpp::Time current_time = get_clock()->now();
 
-  if (!autoware_data_ready())
-  {
-    //TODO(ismet): add what we need to send to CAN when autoware data is not ready
-    RCLCPP_WARN_THROTTLE(get_logger(), *this->get_clock(), 1000, "Data from Autoware is not ready!");
+  if (!autoware_data_ready()) {
+    // TODO(ismet): add what we need to send to CAN when autoware data is not ready
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *this->get_clock(), 1000, "Data from Autoware is not ready!");
     return;
   }
 
@@ -538,8 +546,9 @@ void LeoVcuDriver::llc_interface_adapter()
   }
 
   if (time_out) {
-    RCLCPP_ERROR(get_logger(),
-      "Emergency Stopping, controller output is timeout = %f ms", control_cmd_delta_time_ms);
+    RCLCPP_ERROR(
+      get_logger(), "Emergency Stopping, controller output is timeout = %f ms",
+      control_cmd_delta_time_ms);
     if (enable_cmd_timeout_emergency) {
       emergency_send = true;
     }
@@ -548,8 +557,9 @@ void LeoVcuDriver::llc_interface_adapter()
   if (emergency_send) {
     comp_to_llc_cmd.vehicle_signal_cmd.takeover_request = 1;
     RCLCPP_ERROR(get_logger(), "~EMERGENCY~\n");
-    RCLCPP_ERROR(get_logger(), "Single Point Faults: Emergency hold: %d\n",
-                 hazard_status_stamped_->status.emergency_holding);
+    RCLCPP_ERROR(
+      get_logger(), "Single Point Faults: Emergency hold: %d\n",
+      hazard_status_stamped_->status.emergency_holding);
     for (const auto & diag : hazard_status_stamped_->status.diag_single_point_fault) {
       RCLCPP_ERROR(
         get_logger(),
@@ -559,8 +569,9 @@ void LeoVcuDriver::llc_interface_adapter()
         "message: %s",
         diag.level, diag.name.c_str(), diag.hardware_id.c_str(), diag.message.c_str());
     }
-    RCLCPP_ERROR(get_logger(), "Latent Faults: Emergency hold: %d\n",
-                 hazard_status_stamped_->status.emergency_holding);
+    RCLCPP_ERROR(
+      get_logger(), "Latent Faults: Emergency hold: %d\n",
+      hazard_status_stamped_->status.emergency_holding);
     for (const auto & diag : hazard_status_stamped_->status.diag_latent_fault) {
       RCLCPP_ERROR(
         get_logger(),
@@ -577,9 +588,8 @@ void LeoVcuDriver::llc_interface_adapter()
       current_emergency_acceleration_ +=
         (1 / data_send_rate_) * (-std::fabs(add_emergency_acceleration_per_second));
     }
-    comp_to_llc_cmd.long_cmd.set_long_accel =
-      -std::fabs(std::max(-std::fabs(current_emergency_acceleration_),
-                          -std::fabs(emergency_stop_acceleration)));
+    comp_to_llc_cmd.long_cmd.set_long_accel = -std::fabs(std::max(
+      -std::fabs(current_emergency_acceleration_), -std::fabs(emergency_stop_acceleration)));
     RCLCPP_ERROR(
       get_logger(),
       "Emergency Stopping, emergency = %d, acceleration = %f, max_acc = %f, soft_acceleration = "
@@ -594,22 +604,24 @@ void LeoVcuDriver::llc_interface_adapter()
 
   // TODO(ismet): update vehicle limits w/ Bayram
   /* Check the steering wheel angle and steering wheel angle rate limits */
-  if (comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad < min_steering_wheel_angle ||
-      comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad > max_steering_wheel_angle)
-  {
+  if (
+    comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad < min_steering_wheel_angle ||
+    comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad > max_steering_wheel_angle) {
     comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad = std::min(
-      max_steering_wheel_angle, std::max(
-                                  comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad,
-                                  min_steering_wheel_angle));
+      max_steering_wheel_angle,
+      std::max(
+        comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad, min_steering_wheel_angle));
   }
 
-  if ((fabsf(comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rate) >
-     max_steering_wheel_angle_rate) && check_steering_angle_rate) {
-    comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rate =
-      std::min(max_steering_wheel_angle_rate,
-               std::max(comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rate,
-                        -max_steering_wheel_angle_rate));
-    }
+  if (
+    (fabsf(comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rate) >
+     max_steering_wheel_angle_rate) &&
+    check_steering_angle_rate) {
+    comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rate = std::min(
+      max_steering_wheel_angle_rate, std::max(
+                                       comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rate,
+                                       -max_steering_wheel_angle_rate));
+  }
 
   driver_interface_plugin_->llc_publisher(comp_to_llc_cmd);
 
@@ -660,7 +672,7 @@ void LeoVcuDriver::onAutowareState(
 {
   using autoware_auto_system_msgs::msg::AutowareState;
 
-  if(message->state == AutowareState::DRIVING){
+  if (message->state == AutowareState::DRIVING) {
     comp_to_llc_cmd.vehicle_signal_cmd.hand_brake = 0;
   } else {
     comp_to_llc_cmd.vehicle_signal_cmd.hand_brake = 1;
@@ -669,7 +681,6 @@ void LeoVcuDriver::onAutowareState(
 
 void LeoVcuDriver::publish_current_vehicle_state()
 {
-
   std_msgs::msg::Header header;
   header.frame_id = this->base_frame_id_;
   header.stamp = get_clock()->now();
@@ -734,258 +745,255 @@ void LeoVcuDriver::publish_current_vehicle_state()
   }
 }
 
-void LeoVcuDriver::mechanical_error_check(SystemError & latest_system_error) {
-    error_str.data = std::bitset<8>(llc_to_comp_data_.error_info.mechanical_errors).to_string();
-    for (size_t i = 0; i < error_str.data.size(); i++) {
-        if (error_str.data.at(i) == '0') {
-            switch (i) {
-                case 0: case 1: case 2: case 3: case 4: case 5: // ignore bits
-                    break;
-                case 6:
-                    RCLCPP_ERROR_THROTTLE(
-                      this->get_logger(), *this->get_clock(), 500, "Kl75 error.");
-                    latest_system_error.kl75_error = true;
-                    break;
-                case 7:
-                    RCLCPP_ERROR_THROTTLE(
-                      this->get_logger(), *this->get_clock(), 500, "isMotorRunning Error.");
-                    latest_system_error.motor_running_error = true;
-                    break;
-                default:
-                    RCLCPP_ERROR_THROTTLE(this->get_logger(),
-                                     *this->get_clock(), 500, "Invalid mechanical error message.");
-                    break;
-            }
-        }
+void LeoVcuDriver::mechanical_error_check(SystemError & latest_system_error)
+{
+  error_str.data = std::bitset<8>(llc_to_comp_data_.error_info.mechanical_errors).to_string();
+  for (size_t i = 0; i < error_str.data.size(); i++) {
+    if (error_str.data.at(i) == '0') {
+      switch (i) {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5:  // ignore bits
+          break;
+        case 6:
+          RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 500, "Kl75 error.");
+          latest_system_error.kl75_error = true;
+          break;
+        case 7:
+          RCLCPP_ERROR_THROTTLE(
+            this->get_logger(), *this->get_clock(), 500, "isMotorRunning Error.");
+          latest_system_error.motor_running_error = true;
+          break;
+        default:
+          RCLCPP_ERROR_THROTTLE(
+            this->get_logger(), *this->get_clock(), 500, "Invalid mechanical error message.");
+          break;
+      }
     }
-    llc_error_pub_->publish(error_str);
+  }
+  llc_error_pub_->publish(error_str);
 }
-void LeoVcuDriver::electrical_error_check(SystemError & latest_system_error) {
-    error_str.data = std::bitset<16>(llc_to_comp_data_.error_info.electrical_errors).to_string();
-    for (size_t i = 0; i < error_str.data.size(); i++) {
-        if (error_str.data.at(i) == '1') {
-            switch (i) {
-                case 4:
-                    RCLCPP_ERROR_THROTTLE(
-                      this->get_logger(), *this->get_clock(), 500, "PC_HeartBeatError");
-                    latest_system_error.pc_timeout_error = true;
-                    break;
-                case 5:
-                    RCLCPP_ERROR_THROTTLE(
-                      this->get_logger(), *this->get_clock(), 500, "Brake_HeartBeatError");
-                    latest_system_error.brake_timeout_error = true;
-                    break;
-                case 6:
-                    RCLCPP_ERROR_THROTTLE(
-                      this->get_logger(), *this->get_clock(), 500, "Brake_SystemError");
-                    latest_system_error.brake_system_error = true;
-                    break;
-                case 7:
-                    RCLCPP_ERROR_THROTTLE(
-                      this->get_logger(), *this->get_clock(), 500, "EPAS_HeartBeatError");
-                    latest_system_error.epas_timeout_error = true;
-                    break;
-                case 8:
-                    RCLCPP_ERROR_THROTTLE(
-                      this->get_logger(), *this->get_clock(), 500, "EPAS_SystemError");
-                    latest_system_error.epas_system_error = true;
-                    break;
-                case 9:
-                    // RCLCPP_ERROR_THROTTLE(this->get_logger(),
-                    // *this->get_clock(), 500, "G29_HeartBeatError");
-                    latest_system_error.g29_timeout_error = true;
-                    break;
-                case 10:
-                    RCLCPP_ERROR_THROTTLE(
-                      this->get_logger(), *this->get_clock(), 500, "Throttle_ECU_HeartBeatError");
-                    latest_system_error.throttle_ecu_timeout_error = true;
-                    break;
-                case 11:
-                    RCLCPP_ERROR_THROTTLE(
-                      this->get_logger(), *this->get_clock(), 500, "BrakePowerError");
-                    latest_system_error.brake_power_error = true;
-                    break;
-                case 12:
-                    RCLCPP_ERROR_THROTTLE(
-                      this->get_logger(), *this->get_clock(), 500, "EPASPowerError");
-                    latest_system_error.epas_power_error = true;
-                    break;
-                case 13:
-                    RCLCPP_ERROR_THROTTLE(
-                      this->get_logger(), *this->get_clock(), 500, "By_WirePowerError");
-                    latest_system_error.by_wire_power_error = true;
-                    break;
-                case 14:
-                    RCLCPP_ERROR_THROTTLE(
-                      this->get_logger(), *this->get_clock(), 500, "PDS_BusError");
-                    latest_system_error.pds_bus_error = true;
-                    break;
-                case 15:
-                    RCLCPP_ERROR_THROTTLE(
-                      this->get_logger(), *this->get_clock(), 500, "PDS_HearBeatError");
-                    latest_system_error.pds_timeout_error = true;
-                    break;
-                default:
-                    RCLCPP_ERROR_THROTTLE(
-                      this->get_logger(), *this->get_clock(), 500, "Invalid error message.");
-                    break;
-            }
-        }
+void LeoVcuDriver::electrical_error_check(SystemError & latest_system_error)
+{
+  error_str.data = std::bitset<16>(llc_to_comp_data_.error_info.electrical_errors).to_string();
+  for (size_t i = 0; i < error_str.data.size(); i++) {
+    if (error_str.data.at(i) == '1') {
+      switch (i) {
+        case 4:
+          RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 500, "PC_HeartBeatError");
+          latest_system_error.pc_timeout_error = true;
+          break;
+        case 5:
+          RCLCPP_ERROR_THROTTLE(
+            this->get_logger(), *this->get_clock(), 500, "Brake_HeartBeatError");
+          latest_system_error.brake_timeout_error = true;
+          break;
+        case 6:
+          RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 500, "Brake_SystemError");
+          latest_system_error.brake_system_error = true;
+          break;
+        case 7:
+          RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 500, "EPAS_HeartBeatError");
+          latest_system_error.epas_timeout_error = true;
+          break;
+        case 8:
+          RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 500, "EPAS_SystemError");
+          latest_system_error.epas_system_error = true;
+          break;
+        case 9:
+          // RCLCPP_ERROR_THROTTLE(this->get_logger(),
+          // *this->get_clock(), 500, "G29_HeartBeatError");
+          latest_system_error.g29_timeout_error = true;
+          break;
+        case 10:
+          RCLCPP_ERROR_THROTTLE(
+            this->get_logger(), *this->get_clock(), 500, "Throttle_ECU_HeartBeatError");
+          latest_system_error.throttle_ecu_timeout_error = true;
+          break;
+        case 11:
+          RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 500, "BrakePowerError");
+          latest_system_error.brake_power_error = true;
+          break;
+        case 12:
+          RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 500, "EPASPowerError");
+          latest_system_error.epas_power_error = true;
+          break;
+        case 13:
+          RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 500, "By_WirePowerError");
+          latest_system_error.by_wire_power_error = true;
+          break;
+        case 14:
+          RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 500, "PDS_BusError");
+          latest_system_error.pds_bus_error = true;
+          break;
+        case 15:
+          RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 500, "PDS_HearBeatError");
+          latest_system_error.pds_timeout_error = true;
+          break;
+        default:
+          RCLCPP_ERROR_THROTTLE(
+            this->get_logger(), *this->get_clock(), 500, "Invalid error message.");
+          break;
+      }
     }
-    llc_error_pub_->publish(error_str);
+  }
+  llc_error_pub_->publish(error_str);
 }
 
 void LeoVcuDriver::checkMotorRunningError(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
-    stat.add("motor_running_error", system_error_diagnostics_.motor_running_error);
-    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-    std::string diag_message = "Motor Running system works as expected";
-    if (system_error_diagnostics_.motor_running_error) {
-        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-        diag_message = "Motor running error detected";
-    }
-    stat.summary(diag_level, diag_message);
+  stat.add("motor_running_error", system_error_diagnostics_.motor_running_error);
+  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  std::string diag_message = "Motor Running system works as expected";
+  if (system_error_diagnostics_.motor_running_error) {
+    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+    diag_message = "Motor running error detected";
+  }
+  stat.summary(diag_level, diag_message);
 }
 void LeoVcuDriver::checkKl75Error(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
-    stat.add("kl75_error", system_error_diagnostics_.kl75_error);
-    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-    std::string diag_message = "Kl75 works as expected";
-    if (system_error_diagnostics_.kl75_error) {
-        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-        diag_message = "Kl75 error detected";
-    }
-    stat.summary(diag_level, diag_message);
+  stat.add("kl75_error", system_error_diagnostics_.kl75_error);
+  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  std::string diag_message = "Kl75 works as expected";
+  if (system_error_diagnostics_.kl75_error) {
+    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+    diag_message = "Kl75 error detected";
+  }
+  stat.summary(diag_level, diag_message);
 }
 void LeoVcuDriver::checkPDSTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
-    stat.add("pds_timeout_error", system_error_diagnostics_.pds_timeout_error);
-    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-    std::string diag_message = "PDS communication works as expected";
-    if (system_error_diagnostics_.pds_timeout_error) {
-        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-        diag_message = "PDS timeout error detected";
-    }
-    stat.summary(diag_level, diag_message);
+  stat.add("pds_timeout_error", system_error_diagnostics_.pds_timeout_error);
+  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  std::string diag_message = "PDS communication works as expected";
+  if (system_error_diagnostics_.pds_timeout_error) {
+    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+    diag_message = "PDS timeout error detected";
+  }
+  stat.summary(diag_level, diag_message);
 }
 void LeoVcuDriver::checkPDSBusError(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
-    stat.add("pds_bus_error", system_error_diagnostics_.pds_bus_error);
-    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-    std::string diag_message = "PDS bus works as expected";
-    if (system_error_diagnostics_.pds_bus_error) {
-        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-        diag_message = "PDS bus error detected";
-    }
-    stat.summary(diag_level, diag_message);
+  stat.add("pds_bus_error", system_error_diagnostics_.pds_bus_error);
+  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  std::string diag_message = "PDS bus works as expected";
+  if (system_error_diagnostics_.pds_bus_error) {
+    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+    diag_message = "PDS bus error detected";
+  }
+  stat.summary(diag_level, diag_message);
 }
 void LeoVcuDriver::checkByWireError(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
-    stat.add("by_wire_power_error", system_error_diagnostics_.by_wire_power_error);
-    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-    std::string diag_message = "By wire system powered up";
-    if (system_error_diagnostics_.by_wire_power_error) {
-        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-        diag_message = "By wire system power error detected";
-    }
-    stat.summary(diag_level, diag_message);
+  stat.add("by_wire_power_error", system_error_diagnostics_.by_wire_power_error);
+  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  std::string diag_message = "By wire system powered up";
+  if (system_error_diagnostics_.by_wire_power_error) {
+    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+    diag_message = "By wire system power error detected";
+  }
+  stat.summary(diag_level, diag_message);
 }
 void LeoVcuDriver::checkEPASPowerError(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
-    stat.add("epas_power_error", system_error_diagnostics_.epas_power_error);
-    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-    std::string diag_message = "EPAS system powered up";
-    if (system_error_diagnostics_.epas_power_error) {
-        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-        diag_message = "EPAS power error detected";
-    }
-    stat.summary(diag_level, diag_message);
+  stat.add("epas_power_error", system_error_diagnostics_.epas_power_error);
+  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  std::string diag_message = "EPAS system powered up";
+  if (system_error_diagnostics_.epas_power_error) {
+    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+    diag_message = "EPAS power error detected";
+  }
+  stat.summary(diag_level, diag_message);
 }
 void LeoVcuDriver::checkBrakePowerError(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
-    stat.add("brake_power_error", system_error_diagnostics_.brake_power_error);
-    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-    std::string diag_message = "Brake system powered up";
-    if (system_error_diagnostics_.brake_power_error) {
-        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-        diag_message = "Brake system power error detected";
-    }
-    stat.summary(diag_level, diag_message);
+  stat.add("brake_power_error", system_error_diagnostics_.brake_power_error);
+  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  std::string diag_message = "Brake system powered up";
+  if (system_error_diagnostics_.brake_power_error) {
+    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+    diag_message = "Brake system power error detected";
+  }
+  stat.summary(diag_level, diag_message);
 }
 void LeoVcuDriver::checkThrottleTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
-    stat.add("throttle_ecu_timeout_error", system_error_diagnostics_.throttle_ecu_timeout_error);
-    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-    std::string diag_message = "Throttle-ECU system communication works as expected";
-    if (system_error_diagnostics_.throttle_ecu_timeout_error) {
-        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-        diag_message = "Throttle-ECU system timeout error detected";
-    }
-    stat.summary(diag_level, diag_message);
+  stat.add("throttle_ecu_timeout_error", system_error_diagnostics_.throttle_ecu_timeout_error);
+  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  std::string diag_message = "Throttle-ECU system communication works as expected";
+  if (system_error_diagnostics_.throttle_ecu_timeout_error) {
+    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+    diag_message = "Throttle-ECU system timeout error detected";
+  }
+  stat.summary(diag_level, diag_message);
 }
 void LeoVcuDriver::checkG29TimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
-    stat.add("g29_timeout_error", system_error_diagnostics_.g29_timeout_error);
-    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-    std::string diag_message = "G29 communication works as expected";
-    if (system_error_diagnostics_.g29_timeout_error) {
-        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-        diag_message = "G29 timeout error detected";
-    }
-    stat.summary(diag_level, diag_message);
+  stat.add("g29_timeout_error", system_error_diagnostics_.g29_timeout_error);
+  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  std::string diag_message = "G29 communication works as expected";
+  if (system_error_diagnostics_.g29_timeout_error) {
+    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+    diag_message = "G29 timeout error detected";
+  }
+  stat.summary(diag_level, diag_message);
 }
 void LeoVcuDriver::checkEPASSystemError(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
-    stat.add("epas_system_error", system_error_diagnostics_.epas_system_error);
-    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-    std::string diag_message = "EPAS system works as expected";
-    if (system_error_diagnostics_.epas_system_error) {
-        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-        diag_message = "EPAS system error detected";
-    }
-    stat.summary(diag_level, diag_message);
+  stat.add("epas_system_error", system_error_diagnostics_.epas_system_error);
+  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  std::string diag_message = "EPAS system works as expected";
+  if (system_error_diagnostics_.epas_system_error) {
+    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+    diag_message = "EPAS system error detected";
+  }
+  stat.summary(diag_level, diag_message);
 }
 void LeoVcuDriver::checkEPASTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
-    stat.add("epas_timeout_error", system_error_diagnostics_.epas_timeout_error);
-    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-    std::string diag_message = "EPAS communication works as expected";
-    if (system_error_diagnostics_.epas_timeout_error) {
-        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-        diag_message = "EPAS timeout error detected";
-    }
-    stat.summary(diag_level, diag_message);
+  stat.add("epas_timeout_error", system_error_diagnostics_.epas_timeout_error);
+  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  std::string diag_message = "EPAS communication works as expected";
+  if (system_error_diagnostics_.epas_timeout_error) {
+    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+    diag_message = "EPAS timeout error detected";
+  }
+  stat.summary(diag_level, diag_message);
 }
 void LeoVcuDriver::checkBrakeSystemError(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
-    stat.add("brake_system_error", system_error_diagnostics_.brake_system_error);
-    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-    std::string diag_message = "Brake system works as expected";
-    if (system_error_diagnostics_.brake_system_error) {
-        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-        diag_message = "Brake system error detected";
-    }
-    stat.summary(diag_level, diag_message);
+  stat.add("brake_system_error", system_error_diagnostics_.brake_system_error);
+  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  std::string diag_message = "Brake system works as expected";
+  if (system_error_diagnostics_.brake_system_error) {
+    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+    diag_message = "Brake system error detected";
+  }
+  stat.summary(diag_level, diag_message);
 }
 void LeoVcuDriver::checkBrakeTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
-    stat.add("brake_timeout_error", system_error_diagnostics_.brake_timeout_error);
-    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-    std::string diag_message = "Brake communication system works as expected";
-    if (system_error_diagnostics_.brake_timeout_error) {
-        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-        diag_message = "Brake system timeout error detected";
-    }
-    stat.summary(diag_level, diag_message);
+  stat.add("brake_timeout_error", system_error_diagnostics_.brake_timeout_error);
+  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  std::string diag_message = "Brake communication system works as expected";
+  if (system_error_diagnostics_.brake_timeout_error) {
+    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+    diag_message = "Brake system timeout error detected";
+  }
+  stat.summary(diag_level, diag_message);
 }
 void LeoVcuDriver::checkPCTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
-    stat.add("pc_timeout_error", system_error_diagnostics_.pc_timeout_error);
-    int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-    std::string diag_message = "PC communication system works as expected";
-    if (system_error_diagnostics_.pc_timeout_error) {
-        diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-        diag_message = "PC system timeout error detected";
-    }
-    stat.summary(diag_level, diag_message);
+  stat.add("pc_timeout_error", system_error_diagnostics_.pc_timeout_error);
+  int8_t diag_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  std::string diag_message = "PC communication system works as expected";
+  if (system_error_diagnostics_.pc_timeout_error) {
+    diag_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+    diag_message = "PC system timeout error detected";
+  }
+  stat.summary(diag_level, diag_message);
 }
