@@ -334,14 +334,10 @@ uint8_t LeoVcuDriver::headlight_adapter_to_autoware(uint8_t input) const
 void LeoVcuDriver::control_mode_adapter_to_llc()
 {
   /* send mode */
-  if (!engage_cmd_) {
-    comp_to_llc_cmd.vehicle_signal_cmd.mode = 3;  // DISENGAGED. IT IS PRIOR
-  } else if (gate_mode_cmd_ptr->data == tier4_control_msgs::msg::GateMode::AUTO) {
-    comp_to_llc_cmd.vehicle_signal_cmd.mode = 1;
-  } else if (gate_mode_cmd_ptr->data == tier4_control_msgs::msg::GateMode::EXTERNAL) {
-    comp_to_llc_cmd.vehicle_signal_cmd.mode = 2;  // MANUAL
+  if (gate_mode_cmd_ptr->data == tier4_control_msgs::msg::GateMode::AUTO) {
+    comp_to_llc_cmd.vehicle_signal_cmd.mode = 1; // Control on Autoware (Stop or Autonomous)
   } else {
-    comp_to_llc_cmd.vehicle_signal_cmd.mode = 4;  // NOT READY
+    comp_to_llc_cmd.vehicle_signal_cmd.mode = 0;  // Control on External (Remote or Local)
   }
 }
 
