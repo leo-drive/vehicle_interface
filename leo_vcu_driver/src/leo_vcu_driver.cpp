@@ -93,6 +93,9 @@ LeoVcuDriver::LeoVcuDriver()
   actuation_cmd_sub_ = create_subscription<tier4_vehicle_msgs::msg::ActuationCommandStamped>(
     "/control/command/actuation_cmd", rclcpp::QoS(1),
     std::bind(&LeoVcuDriver::actuator_cmd_callback, this, _1));
+  operation_mode_sub_ = this->create_subscription<autoware_adapi_v1_msgs::msg::OperationModeState>(
+    "/api/operation_mode/state", rclcpp::QoS{1}.transient_local(),
+    std::bind(&LeoVcuDriver::operation_mode_callback, this, _1));
 
   /* Publishers */
 
@@ -122,6 +125,18 @@ LeoVcuDriver::LeoVcuDriver()
           "/vehicle/status/headlights", rclcpp::QoS{1});
   vehicle_state_report_pub_ = create_publisher<leo_vcu_msgs::msg::StateReport>(
     "/vehicle/status/status_report", rclcpp::QoS{1});
+
+  // Control mode server
+  control_mode_server_ = create_service<autoware_auto_vehicle_msgs::srv::ControlModeCommand>(
+    "/control/control_mode_request", std::bind(&LeoVcuDriver::onControlModeRequest, this, _1, _2));
+
+  // Operation mode clients
+  local_mode_client_ = this->create_client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>(
+          "/api/operation_mode/change_to_local", rmw_qos_profile_services_default);
+  stop_mode_client_ = this->create_client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>(
+          "/api/operation_mode/change_to_stop", rmw_qos_profile_services_default);
+  autonomous_mode_client_ = this->create_client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>(
+          "/api/operation_mode/change_to_autonomous", rmw_qos_profile_services_default);
 
   // System error diagnostic
   updater_.setHardwareID("vehicle_error_monitor");
@@ -156,6 +171,10 @@ LeoVcuDriver::LeoVcuDriver()
   tim_data_sender_ = rclcpp::create_timer(
     this, get_clock(), period_ns, std::bind(&LeoVcuDriver::llc_interface_adapter, this));
 
+  const auto period_ns_for_mode_checking = rclcpp::Rate(1).period();
+  tim_data_sender_for_mode_checking_ = rclcpp::create_timer(
+    this, get_clock(), period_ns_for_mode_checking,
+    std::bind(&LeoVcuDriver::operation_mode_handler, this));
 }
 
 void LeoVcuDriver::onHazardStatusStamped(
@@ -171,14 +190,32 @@ void LeoVcuDriver::ctrl_cmd_callback(
   control_cmd_ptr_ = msg;
 }
 
-void LeoVcuDriver::onEmergencyState(
-  autoware_auto_system_msgs::msg::EmergencyState::ConstSharedPtr msg)
+void LeoVcuDriver::onControlModeRequest(
+  const autoware_auto_vehicle_msgs::srv::ControlModeCommand::Request::SharedPtr request,
+  const autoware_auto_vehicle_msgs::srv::ControlModeCommand::Response::SharedPtr response)
 {
-  is_emergency_ = (msg->state == autoware_auto_system_msgs::msg::EmergencyState::MRM_OPERATING) ||
-                  (msg->state == autoware_auto_system_msgs::msg::EmergencyState::MRM_SUCCEEDED) ||
-                  (msg->state == autoware_auto_system_msgs::msg::EmergencyState::MRM_FAILED);
-  take_over_requested_ =
-    msg->state == autoware_auto_system_msgs::msg::EmergencyState::OVERRIDE_REQUESTING;
+  //TODO(ismet): fill function for autoware control mode
+  if (request->mode == autoware_auto_vehicle_msgs::srv::ControlModeCommand::Request::AUTONOMOUS) {
+      response->success = true;
+      return;
+  }
+
+  if (request->mode == autoware_auto_vehicle_msgs::srv::ControlModeCommand::Request::MANUAL) {
+      response->success = true;
+      return;
+  }
+  response->success = false;
+  return;
+}
+
+void LeoVcuDriver::onEmergencyState(
+        autoware_auto_system_msgs::msg::EmergencyState::ConstSharedPtr msg)
+{
+    is_emergency_ = (msg->state == autoware_auto_system_msgs::msg::EmergencyState::MRM_OPERATING) ||
+                    (msg->state == autoware_auto_system_msgs::msg::EmergencyState::MRM_SUCCEEDED) ||
+                    (msg->state == autoware_auto_system_msgs::msg::EmergencyState::MRM_FAILED);
+    take_over_requested_ =
+            msg->state == autoware_auto_system_msgs::msg::EmergencyState::OVERRIDE_REQUESTING;
 }
 
 void LeoVcuDriver::emergency_cmd_callback(
@@ -191,6 +228,12 @@ void LeoVcuDriver::gear_cmd_callback(
   const autoware_auto_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg)
 {
   gear_cmd_ptr_ = msg;
+}
+
+void LeoVcuDriver::operation_mode_callback(
+  const autoware_adapi_v1_msgs::msg::OperationModeState::ConstSharedPtr msg)
+{
+  operation_mode_cmd_ptr_ = msg;
 }
 
 void LeoVcuDriver::turn_indicators_cmd_callback(
@@ -221,6 +264,54 @@ void LeoVcuDriver::actuator_cmd_callback(
   const tier4_vehicle_msgs::msg::ActuationCommandStamped::ConstSharedPtr msg)
 {
   actuation_cmd_ptr = msg;
+}
+
+//Service Call Template Function
+template <typename T>
+void LeoVcuDriver::callServiceWithoutResponse(const typename rclcpp::Client<T>::SharedPtr client)
+{
+  auto req = std::make_shared<typename T::Request>();
+
+  RCLCPP_WARN(this->get_logger(), "Client Request %s",client->get_service_name());
+
+  if (!client->service_is_ready()) {
+        RCLCPP_ERROR(this->get_logger(), "Client is unavailable");
+        return;
+  }
+
+  client->async_send_request(req, [this](typename rclcpp::Client<T>::SharedFuture result) {
+    RCLCPP_INFO(
+      this->get_logger(), "Status: %d, %s", !(result.get()->status.code),
+      result.get()->status.message.c_str());
+  });
+}
+
+void LeoVcuDriver::call_local_mode()
+{
+  // Check local mode is available and the current mode
+  if(operation_mode_cmd_ptr_->is_local_mode_available &&
+      operation_mode_cmd_ptr_->mode !=
+        autoware_adapi_v1_msgs::msg::OperationModeState::LOCAL) {
+        callServiceWithoutResponse<autoware_adapi_v1_msgs::srv::ChangeOperationMode>(
+          local_mode_client_);
+  }
+}
+
+void LeoVcuDriver::operation_mode_handler()
+{
+  if(autoware_data_ready())
+  {
+      // Check intervention is occurred
+      if ((vehicle_state_report_msg_.steering_intervention ||
+           vehicle_state_report_msg_.brake_intervention ||
+           vehicle_state_report_msg_.acc_pedal_intervention) &&
+          !operation_mode_cmd_ptr_->is_in_transition &&
+          comp_to_llc_cmd.vehicle_signal_cmd.mode == 1) {
+        call_local_mode();
+        return;
+      }
+  }
+
 }
 
 void LeoVcuDriver::llc_to_autoware_msg_adapter()
@@ -263,11 +354,14 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
           static_cast<float>(llc_to_comp_data_.motion_info.throttle) / 100.0;
   current_state.actuation_status_msg.status.brake_status =
           (static_cast<float>(llc_to_comp_data_.motion_info.brake) - 1) / 100.0;
+
   // error info msgs
   mechanical_error_check(latest_system_error);
   electrical_error_check(latest_system_error);
 
+  // Publish debug state report
   llc_to_state_report_msg_adapter();
+
   system_error_diagnostics_ = latest_system_error;
 }
 
@@ -334,9 +428,10 @@ uint8_t LeoVcuDriver::headlight_adapter_to_autoware(uint8_t input) const
 void LeoVcuDriver::control_mode_adapter_to_llc()
 {
   /* send mode */
-  if (gate_mode_cmd_ptr->data == tier4_control_msgs::msg::GateMode::AUTO) {
+  if (gate_mode_cmd_ptr->data == tier4_control_msgs::msg::GateMode::AUTO &&
+      !operation_mode_cmd_ptr_->is_in_transition) {
     comp_to_llc_cmd.vehicle_signal_cmd.mode = 1; // Control on Autoware (Stop or Autonomous)
-  } else {
+  } else if(!operation_mode_cmd_ptr_->is_in_transition) {
     comp_to_llc_cmd.vehicle_signal_cmd.mode = 0;  // Control on External (Remote or Local)
   }
 }

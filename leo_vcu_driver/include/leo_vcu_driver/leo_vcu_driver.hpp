@@ -28,10 +28,12 @@
 #include <leo_vcu_driver/interface_plugins/leo_vcu_driver_plugin.hpp>
 
 #include <leo_vcu_driver/visibility_control.hpp>
-#include <rclcpp/rclcpp.hpp>
+#include <leo_vcu_driver/vehicle_interface.h>
+
 #include <vehicle_info_util/vehicle_info_util.hpp>
 
-#include <leo_vcu_driver/vehicle_interface.h>
+#include <rclcpp/rclcpp.hpp>
+
 #include <bitset>
 #include <string>
 #include <vector>
@@ -69,6 +71,11 @@ public:
    * Autoware Universe.
    */
   void gear_cmd_callback(const autoware_auto_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg);
+  /**
+   * @brief It is callback function which takes data from /api/operation_mode/state" topic from
+   * Autoware Universe.
+   */
+  void operation_mode_callback(const autoware_adapi_v1_msgs::msg::OperationModeState::ConstSharedPtr msg);
   /**
    * @brief It is callback function which takes data from "/vehicle/engage" topic from Autoware
    * Universe.
@@ -264,6 +271,28 @@ private:
    */
   void electrical_error_check(
     leo_vcu_driver::vehicle_interface::SystemError & latest_system_error);
+  /**
+   * @brief It checks autoware control mode and updates operation mode if it is necessary.
+   */
+  void operation_mode_handler();
+  /**
+   * @brief It is a service for autoware_control.
+   */
+  void onControlModeRequest(
+    const autoware_auto_vehicle_msgs::srv::ControlModeCommand::Request::SharedPtr request,
+    const autoware_auto_vehicle_msgs::srv::ControlModeCommand::Response::SharedPtr response);
+  /**
+   * @brief Service caller without response for operation mode
+   */
+  template <typename T>
+  void callServiceWithoutResponse(const typename rclcpp::Client<T>::SharedPtr client);
+  /**
+   * @brief Client helper functions
+   */
+  void call_local_mode();
+  void call_stop_mode();
+  void call_autonomous_mode();
+
 
   pluginlib::ClassLoader<leo_vcu_driver::LeoVcuDriverPlugin> plugin_loader_;
   std::shared_ptr<leo_vcu_driver::LeoVcuDriverPlugin> driver_interface_plugin_;
@@ -275,6 +304,7 @@ private:
   autoware_auto_vehicle_msgs::msg::TurnIndicatorsCommand::ConstSharedPtr turn_indicators_cmd_ptr_;
   autoware_auto_vehicle_msgs::msg::HazardLightsCommand::ConstSharedPtr hazard_lights_cmd_ptr_;
   autoware_auto_vehicle_msgs::msg::GearCommand::ConstSharedPtr gear_cmd_ptr_;
+  autoware_adapi_v1_msgs::msg::OperationModeState::ConstSharedPtr operation_mode_cmd_ptr_;
   tier4_vehicle_msgs::msg::VehicleEmergencyStamped::ConstSharedPtr emergency_cmd_ptr;
   tier4_control_msgs::msg::GateMode::ConstSharedPtr gate_mode_cmd_ptr;
   tier4_vehicle_msgs::msg::ActuationCommandStamped::ConstSharedPtr actuation_cmd_ptr;
@@ -334,6 +364,14 @@ private:
     autoware_state_sub_;
   rclcpp::Subscription<tier4_vehicle_msgs::msg::ActuationCommandStamped>::ConstSharedPtr
     actuation_cmd_sub_;
+  rclcpp::Subscription<autoware_adapi_v1_msgs::msg::OperationModeState>::SharedPtr operation_mode_sub_;
+
+  rclcpp::Service<autoware_auto_vehicle_msgs::srv::ControlModeCommand>::SharedPtr control_mode_server_;
+  rclcpp::Client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>::SharedPtr local_mode_client_;
+  rclcpp::Client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>::SharedPtr stop_mode_client_;
+  rclcpp::Client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>::SharedPtr autonomous_mode_client_;
+
+
   /*
   rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::HandBrakeCommand>::SharedPtr
    hand_brake_sub_;
@@ -366,6 +404,7 @@ private:
 
   // Timer
   rclcpp::TimerBase::SharedPtr tim_data_sender_;
+    rclcpp::TimerBase::SharedPtr tim_data_sender_for_mode_checking_;
 
   /* Ros Params */
 

@@ -47,6 +47,11 @@
 
 #include <autoware_auto_vehicle_msgs/msg/raw_control_command.hpp>
 
+#include "autoware_adapi_v1_msgs/msg/operation_mode_state.hpp"
+
+#include <autoware_auto_vehicle_msgs/srv/control_mode_command.hpp>
+#include <autoware_adapi_v1_msgs/srv/change_operation_mode.hpp>
+
 
 #include <std_msgs/msg/string.hpp>
 #include <tier4_control_msgs/msg/gate_mode.hpp>
