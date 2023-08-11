@@ -22,17 +22,15 @@
 #define LEO_VCU_DRIVER__LEO_VCU_DRIVER_HPP_
 
 #include <diagnostic_updater/diagnostic_updater.hpp>
-#include <diagnostic_msgs/msg/diagnostic_status.hpp>
-
-#include <pluginlib/class_loader.hpp>
 #include <leo_vcu_driver/interface_plugins/leo_vcu_driver_plugin.hpp>
-
 #include <leo_vcu_driver/visibility_control.hpp>
-#include <leo_vcu_driver/vehicle_interface.h>
-
+#include <pluginlib/class_loader.hpp>
+#include <rclcpp/rclcpp.hpp>
 #include <vehicle_info_util/vehicle_info_util.hpp>
 
-#include <rclcpp/rclcpp.hpp>
+#include <diagnostic_msgs/msg/diagnostic_status.hpp>
+
+#include <leo_vcu_driver/vehicle_interface.h>
 
 #include <bitset>
 #include <string>
@@ -42,10 +40,10 @@ class LeoVcuDriver : public rclcpp::Node
 {
 public:
   LeoVcuDriver();
-  ~LeoVcuDriver() override { }
+  ~LeoVcuDriver() override {}
 
   /**
-   * @brief It checks the autoware data is ready or not.
+   * @brief It checks the data is ready or not.
    */
   bool autoware_data_ready();
   /**
@@ -75,7 +73,8 @@ public:
    * @brief It is callback function which takes data from /api/operation_mode/state" topic from
    * Autoware Universe.
    */
-  void operation_mode_callback(const autoware_adapi_v1_msgs::msg::OperationModeState::ConstSharedPtr msg);
+  void operation_mode_callback(
+    const autoware_adapi_v1_msgs::msg::OperationModeState::ConstSharedPtr msg);
   /**
    * @brief It is callback function which takes data from "/vehicle/engage" topic from Autoware
    * Universe.
@@ -186,7 +185,8 @@ public:
    */
   void indicator_adapter_to_llc();
   /**
-   * @brief It converts the longitudinal data which is taken from autoware universe wrt LLC messages.
+   * @brief It converts the longitudinal data which is taken from autoware universe wrt LLC
+   * messages.
    */
   void long_mode_adapter_to_llc();
   /**
@@ -199,11 +199,13 @@ public:
    * LLC Data Structure which are defined as global variable.
    */
   void autoware_to_llc_msg_adapter();
+
   /**
    * @brief It is the meta converter function that takes all data from LLC and convert them to
    * leo_vcu_msgs which are ROS2 msg type.
    */
   void llc_to_state_report_msg_adapter();
+
 private:
   /**
    * @brief This function updates Motor Running system error with latest updates
@@ -264,13 +266,11 @@ private:
   /**
    * @brief It checks mechanical errors from llc message. (Motor Running, KL75)
    */
-  void mechanical_error_check(
-    leo_vcu_driver::vehicle_interface::SystemError & latest_system_error);
+  void mechanical_error_check(leo_vcu_driver::vehicle_interface::SystemError & latest_system_error);
   /**
    * @brief It checks electrical errors from llc message. (EPAS, BBW, DBW etc.)
    */
-  void electrical_error_check(
-    leo_vcu_driver::vehicle_interface::SystemError & latest_system_error);
+  void electrical_error_check(leo_vcu_driver::vehicle_interface::SystemError & latest_system_error);
   /**
    * @brief It checks autoware control mode and updates operation mode if it is necessary.
    */
@@ -292,7 +292,6 @@ private:
   void call_local_mode();
   void call_stop_mode();
   void call_autonomous_mode();
-
 
   pluginlib::ClassLoader<leo_vcu_driver::LeoVcuDriverPlugin> plugin_loader_;
   std::shared_ptr<leo_vcu_driver::LeoVcuDriverPlugin> driver_interface_plugin_;
@@ -326,10 +325,10 @@ private:
   // Current state of vehicle (Got from LLC)
   leo_vcu_driver::vehicle_interface::vehicle_current_state_ current_state;
   std_msgs::msg::String error_str;
-  leo_vcu_driver::vehicle_interface::LlcToCompData llc_to_comp_data_ {};
+  leo_vcu_driver::vehicle_interface::LlcToCompData llc_to_comp_data_{};
 
   // To LLC
-  leo_vcu_driver::vehicle_interface::CompToLlcCmd comp_to_llc_cmd {};
+  leo_vcu_driver::vehicle_interface::CompToLlcCmd comp_to_llc_cmd{};
 
   bool is_emergency_{false};
   bool prev_emergency_{false};
@@ -364,13 +363,15 @@ private:
     autoware_state_sub_;
   rclcpp::Subscription<tier4_vehicle_msgs::msg::ActuationCommandStamped>::ConstSharedPtr
     actuation_cmd_sub_;
-  rclcpp::Subscription<autoware_adapi_v1_msgs::msg::OperationModeState>::SharedPtr operation_mode_sub_;
+  rclcpp::Subscription<autoware_adapi_v1_msgs::msg::OperationModeState>::SharedPtr
+    operation_mode_sub_;
 
-  rclcpp::Service<autoware_auto_vehicle_msgs::srv::ControlModeCommand>::SharedPtr control_mode_server_;
+  rclcpp::Service<autoware_auto_vehicle_msgs::srv::ControlModeCommand>::SharedPtr
+    control_mode_server_;
   rclcpp::Client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>::SharedPtr local_mode_client_;
   rclcpp::Client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>::SharedPtr stop_mode_client_;
-  rclcpp::Client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>::SharedPtr autonomous_mode_client_;
-
+  rclcpp::Client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>::SharedPtr
+    autonomous_mode_client_;
 
   /*
   rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::HandBrakeCommand>::SharedPtr
@@ -395,7 +396,8 @@ private:
     hazard_lights_status_pub_;
   rclcpp::Publisher<tier4_vehicle_msgs::msg::SteeringWheelStatusStamped>::SharedPtr
     steering_wheel_status_pub_;
-  rclcpp::Publisher<tier4_vehicle_msgs::msg::ActuationStatusStamped>::SharedPtr actuation_status_pub_;
+  rclcpp::Publisher<tier4_vehicle_msgs::msg::ActuationStatusStamped>::SharedPtr
+    actuation_status_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr llc_error_pub_;
 
   rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::HandBrakeReport>::SharedPtr hand_brake_pub_;
@@ -404,7 +406,7 @@ private:
 
   // Timer
   rclcpp::TimerBase::SharedPtr tim_data_sender_;
-    rclcpp::TimerBase::SharedPtr tim_data_sender_for_mode_checking_;
+  rclcpp::TimerBase::SharedPtr tim_data_sender_for_mode_checking_;
 
   /* Ros Params */
 
@@ -422,9 +424,10 @@ private:
   bool enable_emergency{};
   bool enable_cmd_timeout_emergency{};
   float emergency_stop_acceleration{};
-  float soft_stop_acceleration{};         // [m/s^2]
+  float soft_stop_acceleration{};  // [m/s^2]
   float add_emergency_acceleration_per_second{};
   bool enable_long_actuation_mode{};
-
+  bool enable_debug_mode{false};
+  bool debug_init_{false};
 };
 #endif  // LEO_VCU_DRIVER__LEO_VCU_DRIVER_HPP_
