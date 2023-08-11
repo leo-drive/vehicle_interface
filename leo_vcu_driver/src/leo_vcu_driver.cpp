@@ -171,7 +171,7 @@ LeoVcuDriver::LeoVcuDriver()
   tim_data_sender_ = rclcpp::create_timer(
     this, get_clock(), period_ns, std::bind(&LeoVcuDriver::llc_interface_adapter, this));
 
-  const auto period_ns_for_mode_checking = rclcpp::Rate(1).period();
+  const auto period_ns_for_mode_checking = rclcpp::Rate(0.5).period();
   tim_data_sender_for_mode_checking_ = rclcpp::create_timer(
     this, get_clock(), period_ns_for_mode_checking,
     std::bind(&LeoVcuDriver::operation_mode_handler, this));
@@ -510,26 +510,18 @@ uint8_t LeoVcuDriver::gear_adapter_to_autoware(const uint8_t input)
 
 void LeoVcuDriver::gear_adapter_to_llc(const uint8_t input)
 {
-  switch (input) {
-    case 1: // NEUTRAL
-      comp_to_llc_cmd.vehicle_signal_cmd.gear =  3;
-      break;
-    case 2: // DRIVE
-      comp_to_llc_cmd.vehicle_signal_cmd.gear = 4;
-      break;
-    case 20: // REVERSE
-      if(reverse_gear_enabled_) {
-        comp_to_llc_cmd.vehicle_signal_cmd.gear = 2;
-      } else {
-        comp_to_llc_cmd.vehicle_signal_cmd.gear = 1;
-      }
-      break;
-    case 22: // PARK
+  if(input >= 2 && input <=19) { // DRIVE
+    comp_to_llc_cmd.vehicle_signal_cmd.gear = 4;
+  } else if (input == 1) { 3; // NEUTRAL
+    comp_to_llc_cmd.vehicle_signal_cmd.gear =  3;
+  } else if (input >= 20 && input <=21) { // REVERSE
+    if(reverse_gear_enabled_) {
+      comp_to_llc_cmd.vehicle_signal_cmd.gear = 2;
+    } else {
       comp_to_llc_cmd.vehicle_signal_cmd.gear = 1;
-      break;
-    default: // PARK
-      comp_to_llc_cmd.vehicle_signal_cmd.gear = 1;
-      break;
+    }
+  } else { // PARK
+    comp_to_llc_cmd.vehicle_signal_cmd.gear = 1;
   }
 }
 
