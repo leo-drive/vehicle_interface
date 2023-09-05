@@ -59,7 +59,7 @@ LeoVcuDriver::LeoVcuDriver()
   add_emergency_acceleration_per_second =
     static_cast<float>(declare_parameter("add_emergency_acceleration_per_second", -0.5));
   enable_long_actuation_mode = declare_parameter("enable_long_actuation_mode", false);
-  enable_debug_mode = declare_parameter("enable_debug_mode", false);
+  vcu_mode = declare_parameter("vcu_mode", "normal");
 
   /* Subscribers */
 
@@ -165,6 +165,12 @@ LeoVcuDriver::LeoVcuDriver()
     driver_interface_plugin_ =
       plugin_loader_.createSharedInstance("leo_vcu_driver::serial_interface::SerialInterface");
     driver_interface_plugin_->initialize(this);
+  }
+
+  // check vcu is in debug mode or not
+  if (vcu_mode != "normal") {
+    RCLCPP_WARN(this->get_logger(), "Vcu is in debug mode");
+    debug_mode_ = true;
   }
 
   // Timer
@@ -598,47 +604,55 @@ void LeoVcuDriver::llc_interface_adapter()
   bool time_out = false;
   const rclcpp::Time current_time = get_clock()->now();
 
-  if (!autoware_data_ready() && !enable_debug_mode) {
+  if (!autoware_data_ready() && !debug_mode_) {
     // TODO(ismet): add what we need to send to CAN when autoware data is not ready
     RCLCPP_WARN_THROTTLE(
       get_logger(), *this->get_clock(), 1000, "Data from Autoware is not ready!");
     return;
   }
-  if (enable_debug_mode) {
+  if (debug_mode_) {
     // Set control mode
     comp_to_llc_cmd.vehicle_signal_cmd.mode = 1;  // Control on Autoware (Stop or Autonomous)
     comp_to_llc_cmd.vehicle_signal_cmd.gear = 4;  // send drive gear
     comp_to_llc_cmd.vehicle_signal_cmd.long_mode = enable_long_actuation_mode ? 1 : 0;
-    // Set headlight and wiper
+    // Init others
     comp_to_llc_cmd.vehicle_signal_cmd.headlight = 0;
     comp_to_llc_cmd.vehicle_signal_cmd.wiper = 0;
     comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad = 0.0;
     comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rate = 0.0;
-    if (comp_to_llc_cmd.vehicle_signal_cmd.long_mode == 1) {
-      if (actuation_cmd_ptr) {
-        comp_to_llc_cmd.long_cmd_actuation.set_gas_pedal_pos =
-          static_cast<uint8_t>(actuation_cmd_ptr->actuation.accel_cmd * 100);
-        comp_to_llc_cmd.long_cmd_actuation.set_brake_pedal_pos =
-          static_cast<uint8_t>(actuation_cmd_ptr->actuation.brake_cmd * 100) + 1;  // +1 ???
-      } else {
-        comp_to_llc_cmd.long_cmd_actuation.set_gas_pedal_pos = 0.0;
-        comp_to_llc_cmd.long_cmd_actuation.set_brake_pedal_pos = 0.0;
+    comp_to_llc_cmd.long_cmd_actuation.set_gas_pedal_pos = 0.0;
+    comp_to_llc_cmd.long_cmd_actuation.set_brake_pedal_pos = 0.0;
+    comp_to_llc_cmd.long_cmd.set_long_accel = 0.0;
+    comp_to_llc_cmd.long_cmd.set_limit_velocity = 0.0;
+
+    // Debug mode Pedal mode
+    if (vcu_mode == "debug_pedal") {
+      if (comp_to_llc_cmd.vehicle_signal_cmd.long_mode == 1) {
+        if (actuation_cmd_ptr) {
+          comp_to_llc_cmd.long_cmd_actuation.set_gas_pedal_pos =
+            static_cast<uint8_t>(actuation_cmd_ptr->actuation.accel_cmd * 100);
+          comp_to_llc_cmd.long_cmd_actuation.set_brake_pedal_pos =
+            static_cast<uint8_t>(actuation_cmd_ptr->actuation.brake_cmd * 100) + 1;
+        } else {
+          comp_to_llc_cmd.long_cmd_actuation.set_gas_pedal_pos = 0.0;
+          comp_to_llc_cmd.long_cmd_actuation.set_brake_pedal_pos = 0.0;
+        }
+      }
+      if (control_cmd_ptr_) {
+        // Set longitudinal acceleration and velocity
+        comp_to_llc_cmd.long_cmd.set_long_accel = control_cmd_ptr_->longitudinal.acceleration;
+        comp_to_llc_cmd.long_cmd.set_limit_velocity = control_cmd_ptr_->longitudinal.speed;
       }
     }
-    if (control_cmd_ptr_) {
-      // Set longitudinal acceleration and velocity
-      comp_to_llc_cmd.long_cmd.set_long_accel = control_cmd_ptr_->longitudinal.acceleration;
-      comp_to_llc_cmd.long_cmd.set_limit_velocity = control_cmd_ptr_->longitudinal.speed;
 
-      // TODO(ismet): update transform algorithm (tire -> wheel) for golf w/ berkay
-      comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad =
-        -1 * control_cmd_ptr_->lateral.steering_tire_angle;
-      comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rate =
-        control_cmd_ptr_->lateral.steering_tire_rotation_rate;
-    } else {
-      // Set longitudinal acceleration and velocity
-      comp_to_llc_cmd.long_cmd.set_long_accel = 0.0;
-      comp_to_llc_cmd.long_cmd.set_limit_velocity = 0.0;
+    // Debug mode Steer mode
+    else if (vcu_mode == "debug_steer") {
+      if (control_cmd_ptr_) {
+        comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rad =
+          -1 * control_cmd_ptr_->lateral.steering_tire_angle;
+        comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rate =
+          control_cmd_ptr_->lateral.steering_tire_rotation_rate;
+      }
     }
 
     /* Check the steering wheel angle and steering wheel angle rate limits */
@@ -662,6 +676,7 @@ void LeoVcuDriver::llc_interface_adapter()
     }
     if (!debug_init_) {
       comp_to_llc_cmd.vehicle_signal_cmd.mode = 0;
+      // Control on not autoware, we need to make it 0 for once.
       debug_init_ = true;
     }
     driver_interface_plugin_->llc_publisher(comp_to_llc_cmd);

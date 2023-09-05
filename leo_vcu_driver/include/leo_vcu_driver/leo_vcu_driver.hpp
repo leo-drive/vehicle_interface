@@ -40,73 +40,86 @@ class LeoVcuDriver : public rclcpp::Node
 {
 public:
   LeoVcuDriver();
+
   ~LeoVcuDriver() override {}
 
   /**
    * @brief It checks the data is ready or not.
    */
   bool autoware_data_ready();
+
   /**
    * @brief It is callback function which takes data from "/control/command/control_cmd" topic in
    * Autoware Universe.
    */
   void ctrl_cmd_callback(
     const autoware_auto_control_msgs::msg::AckermannControlCommand::ConstSharedPtr msg);
+
   /**
    * @brief It is callback function which takes data from "/control/command/turn_indicators_cmd"
    * topic in Autoware Universe.
    */
   void turn_indicators_cmd_callback(
     const autoware_auto_vehicle_msgs::msg::TurnIndicatorsCommand::ConstSharedPtr msg);
+
   /**
    * @brief It is callback function which takes data from "/control/command/hazard_lights_cmd" topic
    * from Autoware Universe.
    */
   void hazard_lights_cmd_callback(
     const autoware_auto_vehicle_msgs::msg::HazardLightsCommand::ConstSharedPtr msg);
+
   /**
    * @brief It is callback function which takes data from "/control/command/gear_cmd" topic from
    * Autoware Universe.
    */
   void gear_cmd_callback(const autoware_auto_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg);
+
   /**
    * @brief It is callback function which takes data from /api/operation_mode/state" topic from
    * Autoware Universe.
    */
   void operation_mode_callback(
     const autoware_adapi_v1_msgs::msg::OperationModeState::ConstSharedPtr msg);
+
   /**
    * @brief It is callback function which takes data from "/vehicle/engage" topic from Autoware
    * Universe.
    */
   void engage_cmd_callback(const autoware_auto_vehicle_msgs::msg::Engage::ConstSharedPtr msg);
+
   /**
    * @brief It is callback function which takes data from "/control/command/emergency_cmd" topic
    * from Autoware Universe.
    */
   void emergency_cmd_callback(
     const tier4_vehicle_msgs::msg::VehicleEmergencyStamped::ConstSharedPtr msg);
+
   /**
    * @brief It is callback function which takes data from "/control/current_gate_mode" topic from
    * Autoware Universe.
    */
   void gate_mode_cmd_callback(const tier4_control_msgs::msg::GateMode::ConstSharedPtr msg);
+
   /**
    * @brief It is callback function which takes data from "/system/emergency/emergency_state" topic
    * from Autoware Universe.
    */
   void onEmergencyState(autoware_auto_system_msgs::msg::EmergencyState::ConstSharedPtr msg);
+
   /**
    * @brief It is callback function which takes data from "/system/emergency/hazard_status" topic
    * from Autoware Universe.
    */
   void onHazardStatusStamped(
     const autoware_auto_system_msgs::msg::HazardStatusStamped::ConstSharedPtr msg);
+
   /**
    * @brief It is callback function which takes data from "/autoware/state" topic from
    * Autoware Universe.
    */
   void onAutowareState(const autoware_auto_system_msgs::msg::AutowareState::SharedPtr message);
+
   /**
    * @brief It is callback function which takes data from "/control/command/actuation_cmd" topic in
    * Autoware Universe.
@@ -137,63 +150,76 @@ public:
    * @brief It sends data from interface to low level controller.
    */
   void llc_interface_adapter();
+
   /**
    * @brief It publishes current state of vehicle to Autoware.Universe
    */
   void publish_current_vehicle_state();
+
   /**
    * @brief It converts the steering angle to steering wheel angle.
    * Steering angle means "Teker açısı" and which is radian.
    * Steering wheel angle means "Direksiyon açısı" and which is degree.
    */
   float steering_tire_to_steering_wheel_angle(float input);
+
   /**
    * @brief It converts the steering wheel angle to steering angle.
    * Steering angle means "Teker açısı" and which is radian.
    * Steering wheel angle means "Direksiyon açısı" and which is degree.
    */
   float steering_wheel_to_steering_tire_angle(float input);
+
   /**
    * @brief It converts the gear data which is taken from LLC wrt Autoware Universe messages.
    */
   uint8_t gear_adapter_to_autoware(const uint8_t input);
+
   /**
    * @brief It converts the gear data which is taken from autoware universe wrt LLC messages.
    */
   void gear_adapter_to_llc(const uint8_t input);
+
   /**
    * @brief It converts the headlight data which is taken from LLC wrt Autoware Universe
    * messages.
    */
   uint8_t headlight_adapter_to_autoware(uint8_t input) const;
+
   /**
    * @brief It converts the control mode data which is taken from LLC wrt Autoware Universe
    * messages.
    */
   uint8_t control_mode_adapter_to_autoware(uint8_t input) const;
+
   /**
    * @brief It converts the control mode data which is taken from autoware universe wrt LLC
    * messages.
    */
   void control_mode_adapter_to_llc();
+
   /**
    * @brief It converts the indicator data which is taken from LLC wrt Autoware Universe messages.
    */
   void indicator_adapter_to_autoware(const uint8_t input);
+
   /**
    * @brief It converts the indicator data which is taken from autoware universe wrt LLC messages.
    */
   void indicator_adapter_to_llc();
+
   /**
    * @brief It converts the longitudinal data which is taken from autoware universe wrt LLC
    * messages.
    */
   void long_mode_adapter_to_llc();
+
   /**
    * @brief It is the meta converter function that takes all data from LLC and convert them to
    * Autoware messages which are defined as global variable.
    */
   void llc_to_autoware_msg_adapter();
+
   /**
    * @brief It is the meta converter function that takes all data from Autoware and convert them to
    * LLC Data Structure which are defined as global variable.
@@ -211,86 +237,107 @@ private:
    * @brief This function updates Motor Running system error with latest updates
    */
   void checkMotorRunningError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
   /**
    * @brief This function updates Kl75 error with latest updates
    */
   void checkKl75Error(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
   /**
    * @brief This function updates PDS timeout error with latest updates
    */
   void checkPDSTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
   /**
    * @brief This function updates PDS bus error with latest updates
    */
   void checkPDSBusError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
   /**
    * @brief This function updates BY Wire system error with latest updates
    */
   void checkByWireError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
   /**
    * @brief This function updates EPAS power error with latest updates
    */
   void checkEPASPowerError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
   /**
    * @brief This function updates Brake power error with latest updates
    */
   void checkBrakePowerError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
   /**
    * @brief This function updates Throttle-ecu timeout error with latest updates
    */
   void checkThrottleTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
   /**
    * @brief This function updates G29 timeout error with latest updates
    */
   void checkG29TimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
   /**
    * @brief This function updates EPAS system error with latest updates
    */
   void checkEPASSystemError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
   /**
    * @brief This function updates EPAS timeout error with latest updates
    */
   void checkEPASTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
   /**
    * @brief This function updates Brake System error with latest updates
    */
   void checkBrakeSystemError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
   /**
    * @brief This function updates Brake timeout error with latest updates
    */
   void checkBrakeTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
   /**
    * @brief This function updates PC timeout error with latest updates
    */
   void checkPCTimeoutError(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
   /**
    * @brief It checks mechanical errors from llc message. (Motor Running, KL75)
    */
   void mechanical_error_check(leo_vcu_driver::vehicle_interface::SystemError & latest_system_error);
+
   /**
    * @brief It checks electrical errors from llc message. (EPAS, BBW, DBW etc.)
    */
   void electrical_error_check(leo_vcu_driver::vehicle_interface::SystemError & latest_system_error);
+
   /**
    * @brief It checks autoware control mode and updates operation mode if it is necessary.
    */
   void operation_mode_handler();
+
   /**
    * @brief It is a service for autoware_control.
    */
   void onControlModeRequest(
     const autoware_auto_vehicle_msgs::srv::ControlModeCommand::Request::SharedPtr request,
     const autoware_auto_vehicle_msgs::srv::ControlModeCommand::Response::SharedPtr response);
+
   /**
    * @brief Service caller without response for operation mode
    */
   template <typename T>
   void callServiceWithoutResponse(const typename rclcpp::Client<T>::SharedPtr client);
+
   /**
    * @brief Client helper functions
    */
   void call_local_mode();
+
   void call_stop_mode();
+
   void call_autonomous_mode();
 
   pluginlib::ClassLoader<leo_vcu_driver::LeoVcuDriverPlugin> plugin_loader_;
@@ -408,6 +455,9 @@ private:
   rclcpp::TimerBase::SharedPtr tim_data_sender_;
   rclcpp::TimerBase::SharedPtr tim_data_sender_for_mode_checking_;
 
+  // Debug mode
+  bool debug_mode_{false};
+
   /* Ros Params */
 
   std::string interface_mod_;
@@ -427,7 +477,8 @@ private:
   float soft_stop_acceleration{};  // [m/s^2]
   float add_emergency_acceleration_per_second{};
   bool enable_long_actuation_mode{};
-  bool enable_debug_mode{false};
+  std::string vcu_mode{"normal"};
   bool debug_init_{false};
 };
+
 #endif  // LEO_VCU_DRIVER__LEO_VCU_DRIVER_HPP_
