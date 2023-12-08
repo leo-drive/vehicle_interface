@@ -15,5 +15,5 @@
     soft_stop_acceleration: -2.5
     add_emergency_acceleration_per_second: -1.5
     enable_cmd_timeout_emergency: false
-    enable_long_actuation_mode: true
+    enable_long_actuation_mode: false
     vcu_mode: "normal"                      # normal, debug_steer, debug_pedal
