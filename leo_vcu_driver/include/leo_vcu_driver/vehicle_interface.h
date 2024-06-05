@@ -20,9 +20,6 @@
 
 
 #include <autoware_auto_control_msgs/msg/ackermann_control_command.hpp>
-#include <autoware_auto_system_msgs/msg/emergency_state.hpp>
-#include <autoware_auto_system_msgs/msg/hazard_status_stamped.hpp>
-#include <autoware_auto_system_msgs/msg/autoware_state.hpp>
 #include <autoware_auto_vehicle_msgs/msg/control_mode_report.hpp>
 #include <autoware_auto_vehicle_msgs/msg/engage.hpp>
 

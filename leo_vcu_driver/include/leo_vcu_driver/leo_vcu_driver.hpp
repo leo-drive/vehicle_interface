@@ -86,22 +86,6 @@ public:
    */
   void gate_mode_cmd_callback(const tier4_control_msgs::msg::GateMode::ConstSharedPtr msg);
   /**
-   * @brief It is callback function which takes data from "/system/emergency/emergency_state" topic
-   * from Autoware Universe.
-   */
-  void onEmergencyState(autoware_auto_system_msgs::msg::EmergencyState::ConstSharedPtr msg);
-  /**
-   * @brief It is callback function which takes data from "/system/emergency/hazard_status" topic
-   * from Autoware Universe.
-   */
-  void onHazardStatusStamped(
-    const autoware_auto_system_msgs::msg::HazardStatusStamped::ConstSharedPtr msg);
-  /**
-   * @brief It is callback function which takes data from "/autoware/state" topic from
-   * Autoware Universe.
-   */
-  void onAutowareState(const autoware_auto_system_msgs::msg::AutowareState::SharedPtr message);
-  /**
    * @brief It is callback function which takes data from "/control/command/actuation_cmd" topic in
    * Autoware Universe.
    */
@@ -290,7 +274,6 @@ private:
 
   /* Variables */
   rclcpp::Time control_command_received_time_;
-  autoware_auto_system_msgs::msg::HazardStatusStamped::ConstSharedPtr hazard_status_stamped_;
   bool is_forward_direction_{true};
 
   // Current state of vehicle (Got from LLC)
@@ -326,12 +309,6 @@ private:
   rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::Engage>::SharedPtr engage_cmd_sub_;
   rclcpp::Subscription<tier4_vehicle_msgs::msg::VehicleEmergencyStamped>::SharedPtr emergency_sub_;
   rclcpp::Subscription<tier4_control_msgs::msg::GateMode>::ConstSharedPtr gate_mode_sub_;
-  rclcpp::Subscription<autoware_auto_system_msgs::msg::EmergencyState>::SharedPtr
-    emergency_state_sub_;
-  rclcpp::Subscription<autoware_auto_system_msgs::msg::HazardStatusStamped>::SharedPtr
-    sub_hazard_status_stamped_;
-  rclcpp::Subscription<autoware_auto_system_msgs::msg::AutowareState>::ConstSharedPtr
-    autoware_state_sub_;
   rclcpp::Subscription<tier4_vehicle_msgs::msg::ActuationCommandStamped>::ConstSharedPtr
     actuation_cmd_sub_;
   /*

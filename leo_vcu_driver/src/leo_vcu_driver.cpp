@@ -82,14 +82,6 @@ LeoVcuDriver::LeoVcuDriver()
   emergency_sub_ = create_subscription<tier4_vehicle_msgs::msg::VehicleEmergencyStamped>(
     "/control/command/emergency_cmd", 1,
     std::bind(&LeoVcuDriver::emergency_cmd_callback, this, _1));
-  emergency_state_sub_ = this->create_subscription<autoware_auto_system_msgs::msg::EmergencyState>(
-    "/system/emergency/emergency_state", 1, std::bind(&LeoVcuDriver::onEmergencyState, this, _1));
-  sub_hazard_status_stamped_ =
-    create_subscription<autoware_auto_system_msgs::msg::HazardStatusStamped>(
-      "/system/emergency/hazard_status", rclcpp::QoS{1},
-      std::bind(&LeoVcuDriver::onHazardStatusStamped, this, _1));
-  autoware_state_sub_ = create_subscription<autoware_auto_system_msgs::msg::AutowareState>(
-    "/autoware/state", rclcpp::QoS(1), std::bind(&LeoVcuDriver::onAutowareState, this, _1));
   actuation_cmd_sub_ = create_subscription<tier4_vehicle_msgs::msg::ActuationCommandStamped>(
     "/control/command/actuation_cmd", rclcpp::QoS(1),
     std::bind(&LeoVcuDriver::actuator_cmd_callback, this, _1));
@@ -157,27 +149,11 @@ LeoVcuDriver::LeoVcuDriver()
     this, get_clock(), period_ns, std::bind(&LeoVcuDriver::llc_interface_adapter, this));
 }
 
-void LeoVcuDriver::onHazardStatusStamped(
-  const autoware_auto_system_msgs::msg::HazardStatusStamped::ConstSharedPtr msg)
-{
-  hazard_status_stamped_ = msg;
-}
-
 void LeoVcuDriver::ctrl_cmd_callback(
   const autoware_auto_control_msgs::msg::AckermannControlCommand::ConstSharedPtr msg)
 {
   control_command_received_time_ = this->now();
   control_cmd_ptr_ = msg;
-}
-
-void LeoVcuDriver::onEmergencyState(
-  autoware_auto_system_msgs::msg::EmergencyState::ConstSharedPtr msg)
-{
-  is_emergency_ = (msg->state == autoware_auto_system_msgs::msg::EmergencyState::MRM_OPERATING) ||
-                  (msg->state == autoware_auto_system_msgs::msg::EmergencyState::MRM_SUCCEEDED) ||
-                  (msg->state == autoware_auto_system_msgs::msg::EmergencyState::MRM_FAILED);
-  take_over_requested_ =
-    msg->state == autoware_auto_system_msgs::msg::EmergencyState::OVERRIDE_REQUESTING;
 }
 
 void LeoVcuDriver::emergency_cmd_callback(
@@ -557,30 +533,7 @@ void LeoVcuDriver::llc_interface_adapter()
   if (emergency_send) {
     comp_to_llc_cmd.vehicle_signal_cmd.takeover_request = 1;
     RCLCPP_ERROR(get_logger(), "~EMERGENCY~\n");
-    RCLCPP_ERROR(
-      get_logger(), "Single Point Faults: Emergency hold: %d\n",
-      hazard_status_stamped_->status.emergency_holding);
-    for (const auto & diag : hazard_status_stamped_->status.diag_single_point_fault) {
-      RCLCPP_ERROR(
-        get_logger(),
-        "level: %hhu\n"
-        "name: %s\n"
-        "hardware_id: %s\n"
-        "message: %s",
-        diag.level, diag.name.c_str(), diag.hardware_id.c_str(), diag.message.c_str());
-    }
-    RCLCPP_ERROR(
-      get_logger(), "Latent Faults: Emergency hold: %d\n",
-      hazard_status_stamped_->status.emergency_holding);
-    for (const auto & diag : hazard_status_stamped_->status.diag_latent_fault) {
-      RCLCPP_ERROR(
-        get_logger(),
-        "level: %hhu\n"
-        "name: %s\n"
-        "hardware_id: %s\n"
-        "message: %s",
-        diag.level, diag.name.c_str(), diag.hardware_id.c_str(), diag.message.c_str());
-    }
+
     if (!prev_emergency_) {
       current_emergency_acceleration_ = -std::fabs(soft_stop_acceleration);
       prev_emergency_ = true;
@@ -665,18 +618,6 @@ bool LeoVcuDriver::autoware_data_ready()
     }
   }
   return output;
-}
-
-void LeoVcuDriver::onAutowareState(
-  const autoware_auto_system_msgs::msg::AutowareState::SharedPtr message)
-{
-  using autoware_auto_system_msgs::msg::AutowareState;
-
-  if (message->state == AutowareState::DRIVING) {
-    comp_to_llc_cmd.vehicle_signal_cmd.hand_brake = 0;
-  } else {
-    comp_to_llc_cmd.vehicle_signal_cmd.hand_brake = 1;
-  }
 }
 
 void LeoVcuDriver::publish_current_vehicle_state()
