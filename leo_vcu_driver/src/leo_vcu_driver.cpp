@@ -30,7 +30,7 @@ using namespace leo_vcu_driver::vehicle_interface;
 LeoVcuDriver::LeoVcuDriver()
 : Node("leo_vcu_driver"),
   plugin_loader_("leo_vcu_driver", "leo_vcu_driver::LeoVcuDriverPlugin"),
-  vehicle_info_(vehicle_info_util::VehicleInfoUtil(*this).getVehicleInfo()),
+  vehicle_info_(autoware::vehicle_info_utils::VehicleInfoUtils(*this).getVehicleInfo()),
   updater_(this)
 {
   /* Parameters */

@@ -13,6 +13,7 @@
   <depend>autoware_auto_control_msgs</depend>
   <depend>autoware_auto_vehicle_msgs</depend>
   <depend>autoware_auto_geometry</depend>
+  <depend>autoware_vehicle_info_utils</depend>
   <depend>diagnostic_msgs</depend>
   <depend>diagnostic_updater</depend>
   <depend>rclcpp</depend>
@@ -23,7 +24,6 @@
   <depend>tier4_debug_msgs</depend>
   <depend>tier4_vehicle_msgs</depend>
   <depend>tier4_control_msgs</depend>
-  <depend>vehicle_info_util</depend>
   <depend>pluginlib</depend>
   <depend>leo_vcu_msgs</depend>
   <depend>ros2_socketcan</depend>

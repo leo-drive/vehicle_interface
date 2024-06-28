@@ -29,7 +29,7 @@
 
 #include <leo_vcu_driver/visibility_control.hpp>
 #include <rclcpp/rclcpp.hpp>
-#include <vehicle_info_util/vehicle_info_util.hpp>
+#include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
 #include <leo_vcu_driver/vehicle_interface.h>
 #include <bitset>
@@ -290,7 +290,7 @@ private:
   bool take_over_requested_{false};
 
   // Vehicle info params
-  vehicle_info_util::VehicleInfo vehicle_info_;
+  autoware::vehicle_info_utils::VehicleInfo vehicle_info_;
 
   // Diagnostic Updater Object
   diagnostic_updater::Updater updater_;
