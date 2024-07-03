@@ -93,7 +93,7 @@ void CanInterface::can_receive_callback(can_msgs::msg::Frame::SharedPtr msg)
                   sizeof(llc_to_comp_data_.vehicle_dyn_info));
     }
     break;
-    case 1042: // fuel, blinker, headlight, wiper, gear, mode, hand_brake and horn publisher
+    case 1042: // fuel, blinker, wiper, gear, mode, and horn publisher
     {
       std::memcpy(&llc_to_comp_data_.vehicle_sgl_status, &msg->data,
                   sizeof(llc_to_comp_data_.vehicle_sgl_status));

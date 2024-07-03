@@ -2,11 +2,9 @@ std_msgs/Header header
 # ID: 1042
 uint8 fuel                              # Fuel Level of Vehicle
 uint8 blinker                           # Blinker Status
-bool headlight                          # Headlight Status
 bool wiper                              # Wiper Status
 uint8 gear                              # Gear Status 1:PARK 2:REVERSE 3:NEUTRAL 4:DRIVE
 uint8 mode                              # Mode Status 1:AUTO 2:REMOTE
-bool hand_brake                         # Handbrake Status
 bool horn                               # Horn Status
 # ID: 1043
 uint8 steering_intervention             # Steering Intervention Status

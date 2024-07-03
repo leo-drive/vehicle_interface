@@ -51,29 +51,29 @@ public:
    * Autoware Universe.
    */
   void ctrl_cmd_callback(
-    const autoware_auto_control_msgs::msg::AckermannControlCommand::ConstSharedPtr msg);
+    const autoware_control_msgs::msg::Control::ConstSharedPtr msg);
   /**
    * @brief It is callback function which takes data from "/control/command/turn_indicators_cmd"
    * topic in Autoware Universe.
    */
   void turn_indicators_cmd_callback(
-    const autoware_auto_vehicle_msgs::msg::TurnIndicatorsCommand::ConstSharedPtr msg);
+    const autoware_vehicle_msgs::msg::TurnIndicatorsCommand::ConstSharedPtr msg);
   /**
    * @brief It is callback function which takes data from "/control/command/hazard_lights_cmd" topic
    * from Autoware Universe.
    */
   void hazard_lights_cmd_callback(
-    const autoware_auto_vehicle_msgs::msg::HazardLightsCommand::ConstSharedPtr msg);
+    const autoware_vehicle_msgs::msg::HazardLightsCommand::ConstSharedPtr msg);
   /**
    * @brief It is callback function which takes data from "/control/command/gear_cmd" topic from
    * Autoware Universe.
    */
-  void gear_cmd_callback(const autoware_auto_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg);
+  void gear_cmd_callback(const autoware_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg);
   /**
    * @brief It is callback function which takes data from "/vehicle/engage" topic from Autoware
    * Universe.
    */
-  void engage_cmd_callback(const autoware_auto_vehicle_msgs::msg::Engage::ConstSharedPtr msg);
+  void engage_cmd_callback(const autoware_vehicle_msgs::msg::Engage::ConstSharedPtr msg);
   /**
    * @brief It is callback function which takes data from "/control/command/emergency_cmd" topic
    * from Autoware Universe.
@@ -91,26 +91,6 @@ public:
    */
   void actuator_cmd_callback(
     const tier4_vehicle_msgs::msg::ActuationCommandStamped::ConstSharedPtr msg);
-
-  /* Hand Brake, headlights and raw control commands are not published yet by Autoware.Universe */
-  /**
-   * @brief It is callback function which takes data from "/" topic from Autoware Universe
-
-   void hand_brake_cmd_callback(
-     const autoware_auto_vehicle_msgs::msg::HandBrakeCommand::ConstSharedPtr msg);
-  */
-  /**
-   * @brief It is callback function which takes data from "/" topic from Autoware Universe
-
-   void headlights_cmd_callback(
-     const autoware_auto_vehicle_msgs::msg::HeadlightsCommand::ConstSharedPtr msg);
-  */
-  /**
-   * @brief It is callback function which takes data from "/" topic from Autoware Universe
-
-   void raw_control_cmd_callback(
-     const autoware_auto_vehicle_msgs::msg::RawControlCommand::ConstSharedPtr msg);
-  */
   /**
    * @brief It sends data from interface to low level controller.
    */
@@ -139,11 +119,6 @@ public:
    * @brief It converts the gear data which is taken from autoware universe wrt LLC messages.
    */
   void gear_adapter_to_llc(const uint8_t input);
-  /**
-   * @brief It converts the headlight data which is taken from LLC wrt Autoware Universe
-   * messages.
-   */
-  uint8_t headlight_adapter_to_autoware(uint8_t input) const;
   /**
    * @brief It converts the control mode data which is taken from LLC wrt Autoware Universe
    * messages.
@@ -255,20 +230,14 @@ private:
   /* input values */
 
   // From Autoware
-  autoware_auto_control_msgs::msg::AckermannControlCommand::ConstSharedPtr control_cmd_ptr_;
-  autoware_auto_vehicle_msgs::msg::TurnIndicatorsCommand::ConstSharedPtr turn_indicators_cmd_ptr_;
-  autoware_auto_vehicle_msgs::msg::HazardLightsCommand::ConstSharedPtr hazard_lights_cmd_ptr_;
-  autoware_auto_vehicle_msgs::msg::GearCommand::ConstSharedPtr gear_cmd_ptr_;
+  autoware_control_msgs::msg::Control::ConstSharedPtr control_cmd_ptr_;
+  autoware_vehicle_msgs::msg::TurnIndicatorsCommand::ConstSharedPtr turn_indicators_cmd_ptr_;
+  autoware_vehicle_msgs::msg::HazardLightsCommand::ConstSharedPtr hazard_lights_cmd_ptr_;
+  autoware_vehicle_msgs::msg::GearCommand::ConstSharedPtr gear_cmd_ptr_;
   tier4_vehicle_msgs::msg::VehicleEmergencyStamped::ConstSharedPtr emergency_cmd_ptr;
   tier4_control_msgs::msg::GateMode::ConstSharedPtr gate_mode_cmd_ptr;
   tier4_vehicle_msgs::msg::ActuationCommandStamped::ConstSharedPtr actuation_cmd_ptr;
   leo_vcu_msgs::msg::StateReport vehicle_state_report_msg_;
-
-  /*
-  autoware_auto_vehicle_msgs::msg::HandBrakeCommand::ConstSharedPtr hand_brake_cmd_ptr;
-  autoware_auto_vehicle_msgs::msg::HeadlightsCommand::ConstSharedPtr head_lights_cmd_ptr;
-  autoware_auto_vehicle_msgs::msg::RawControlCommand::ConstSharedPtr raw_control_cmd_ptr;
-   */
 
   bool engage_cmd_{0};
 
@@ -299,46 +268,35 @@ private:
 
   /* Subscribers */
   // From Autoware
-  rclcpp::Subscription<autoware_auto_control_msgs::msg::AckermannControlCommand>::SharedPtr
+  rclcpp::Subscription<autoware_control_msgs::msg::Control>::SharedPtr
     control_cmd_sub_;
-  rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::GearCommand>::SharedPtr gear_cmd_sub_;
-  rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::TurnIndicatorsCommand>::SharedPtr
+  rclcpp::Subscription<autoware_vehicle_msgs::msg::GearCommand>::SharedPtr gear_cmd_sub_;
+  rclcpp::Subscription<autoware_vehicle_msgs::msg::TurnIndicatorsCommand>::SharedPtr
     turn_indicators_cmd_sub_;
-  rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::HazardLightsCommand>::SharedPtr
+  rclcpp::Subscription<autoware_vehicle_msgs::msg::HazardLightsCommand>::SharedPtr
     hazard_lights_cmd_sub_;
-  rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::Engage>::SharedPtr engage_cmd_sub_;
+  rclcpp::Subscription<autoware_vehicle_msgs::msg::Engage>::SharedPtr engage_cmd_sub_;
   rclcpp::Subscription<tier4_vehicle_msgs::msg::VehicleEmergencyStamped>::SharedPtr emergency_sub_;
   rclcpp::Subscription<tier4_control_msgs::msg::GateMode>::ConstSharedPtr gate_mode_sub_;
   rclcpp::Subscription<tier4_vehicle_msgs::msg::ActuationCommandStamped>::ConstSharedPtr
     actuation_cmd_sub_;
-  /*
-  rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::HandBrakeCommand>::SharedPtr
-   hand_brake_sub_;
-  rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::HeadlightsCommand>::SharedPtr
-   headlights_sub_;
-  rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::RawControlCommand>::SharedPtr
-   raw_control_cmd_sub_;
-  */
 
   /* Publishers */
   // To Autoware
-  rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::ControlModeReport>::SharedPtr
+  rclcpp::Publisher<autoware_vehicle_msgs::msg::ControlModeReport>::SharedPtr
     control_mode_pub_;
-  rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::VelocityReport>::SharedPtr vehicle_twist_pub_;
-  rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::SteeringReport>::SharedPtr
+  rclcpp::Publisher<autoware_vehicle_msgs::msg::VelocityReport>::SharedPtr vehicle_twist_pub_;
+  rclcpp::Publisher<autoware_vehicle_msgs::msg::SteeringReport>::SharedPtr
     steering_status_pub_;
-  rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::GearReport>::SharedPtr gear_status_pub_;
-  rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::TurnIndicatorsReport>::SharedPtr
+  rclcpp::Publisher<autoware_vehicle_msgs::msg::GearReport>::SharedPtr gear_status_pub_;
+  rclcpp::Publisher<autoware_vehicle_msgs::msg::TurnIndicatorsReport>::SharedPtr
     turn_indicators_status_pub_;
-  rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::HazardLightsReport>::SharedPtr
+  rclcpp::Publisher<autoware_vehicle_msgs::msg::HazardLightsReport>::SharedPtr
     hazard_lights_status_pub_;
   rclcpp::Publisher<tier4_vehicle_msgs::msg::SteeringWheelStatusStamped>::SharedPtr
     steering_wheel_status_pub_;
   rclcpp::Publisher<tier4_vehicle_msgs::msg::ActuationStatusStamped>::SharedPtr actuation_status_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr llc_error_pub_;
-
-  rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::HandBrakeReport>::SharedPtr hand_brake_pub_;
-  rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::HeadlightsReport>::SharedPtr headlights_pub_;
   rclcpp::Publisher<leo_vcu_msgs::msg::StateReport>::SharedPtr vehicle_state_report_pub_;
 
   // Timer

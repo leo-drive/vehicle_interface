@@ -63,19 +63,19 @@ LeoVcuDriver::LeoVcuDriver()
   /* Subscribers */
 
   // From Autoware
-  control_cmd_sub_ = create_subscription<autoware_auto_control_msgs::msg::AckermannControlCommand>(
+  control_cmd_sub_ = create_subscription<autoware_control_msgs::msg::Control>(
     "/control/command/control_cmd", 1, std::bind(&LeoVcuDriver::ctrl_cmd_callback, this, _1));
-  gear_cmd_sub_ = create_subscription<autoware_auto_vehicle_msgs::msg::GearCommand>(
+  gear_cmd_sub_ = create_subscription<autoware_vehicle_msgs::msg::GearCommand>(
     "/control/command/gear_cmd", 1, std::bind(&LeoVcuDriver::gear_cmd_callback, this, _1));
   turn_indicators_cmd_sub_ =
-    create_subscription<autoware_auto_vehicle_msgs::msg::TurnIndicatorsCommand>(
+    create_subscription<autoware_vehicle_msgs::msg::TurnIndicatorsCommand>(
       "/control/command/turn_indicators_cmd", rclcpp::QoS{1},
       std::bind(&LeoVcuDriver::turn_indicators_cmd_callback, this, _1));
   hazard_lights_cmd_sub_ =
-    create_subscription<autoware_auto_vehicle_msgs::msg::HazardLightsCommand>(
+    create_subscription<autoware_vehicle_msgs::msg::HazardLightsCommand>(
       "/control/command/hazard_lights_cmd", rclcpp::QoS{1},
       std::bind(&LeoVcuDriver::hazard_lights_cmd_callback, this, _1));
-  engage_cmd_sub_ = create_subscription<autoware_auto_vehicle_msgs::msg::Engage>(
+  engage_cmd_sub_ = create_subscription<autoware_vehicle_msgs::msg::Engage>(
     "/autoware/engage", rclcpp::QoS{1}, std::bind(&LeoVcuDriver::engage_cmd_callback, this, _1));
   gate_mode_sub_ = create_subscription<tier4_control_msgs::msg::GateMode>(
     "/control/current_gate_mode", 1, std::bind(&LeoVcuDriver::gate_mode_cmd_callback, this, _1));
@@ -89,18 +89,18 @@ LeoVcuDriver::LeoVcuDriver()
   /* Publishers */
 
   // To Autoware
-  control_mode_pub_ = create_publisher<autoware_auto_vehicle_msgs::msg::ControlModeReport>(
+  control_mode_pub_ = create_publisher<autoware_vehicle_msgs::msg::ControlModeReport>(
     "/vehicle/status/control_mode", rclcpp::QoS{1});
-  vehicle_twist_pub_ = create_publisher<autoware_auto_vehicle_msgs::msg::VelocityReport>(
+  vehicle_twist_pub_ = create_publisher<autoware_vehicle_msgs::msg::VelocityReport>(
     "/vehicle/status/velocity_status", rclcpp::QoS{1});
-  steering_status_pub_ = create_publisher<autoware_auto_vehicle_msgs::msg::SteeringReport>(
+  steering_status_pub_ = create_publisher<autoware_vehicle_msgs::msg::SteeringReport>(
     "/vehicle/status/steering_status", rclcpp::QoS{1});
-  gear_status_pub_ = create_publisher<autoware_auto_vehicle_msgs::msg::GearReport>(
+  gear_status_pub_ = create_publisher<autoware_vehicle_msgs::msg::GearReport>(
     "/vehicle/status/gear_status", rclcpp::QoS{1});
   turn_indicators_status_pub_ =
-    create_publisher<autoware_auto_vehicle_msgs::msg::TurnIndicatorsReport>(
+    create_publisher<autoware_vehicle_msgs::msg::TurnIndicatorsReport>(
       "/vehicle/status/turn_indicators_status", rclcpp::QoS{1});
-  hazard_lights_status_pub_ = create_publisher<autoware_auto_vehicle_msgs::msg::HazardLightsReport>(
+  hazard_lights_status_pub_ = create_publisher<autoware_vehicle_msgs::msg::HazardLightsReport>(
     "/vehicle/status/hazard_lights_status", rclcpp::QoS{1});
   steering_wheel_status_pub_ =
     create_publisher<tier4_vehicle_msgs::msg::SteeringWheelStatusStamped>(
@@ -108,10 +108,6 @@ LeoVcuDriver::LeoVcuDriver()
   actuation_status_pub_ = create_publisher<tier4_vehicle_msgs::msg::ActuationStatusStamped>(
     "/vehicle/status/actuation_status", rclcpp::QoS{1});
   llc_error_pub_ = create_publisher<std_msgs::msg::String>("/interface/status/llc_status", 1);
-  hand_brake_pub_ = create_publisher<autoware_auto_vehicle_msgs::msg::HandBrakeReport>(
-    "/vehicle/status/hand_brake", rclcpp::QoS{1});
-  headlights_pub_ = create_publisher<autoware_auto_vehicle_msgs::msg::HeadlightsReport>(
-    "/vehicle/status/headlights", rclcpp::QoS{1});
   vehicle_state_report_pub_ = create_publisher<leo_vcu_msgs::msg::StateReport>(
     "/vehicle/status/status_report", rclcpp::QoS{1});
 
@@ -150,7 +146,7 @@ LeoVcuDriver::LeoVcuDriver()
 }
 
 void LeoVcuDriver::ctrl_cmd_callback(
-  const autoware_auto_control_msgs::msg::AckermannControlCommand::ConstSharedPtr msg)
+  const autoware_control_msgs::msg::Control::ConstSharedPtr msg)
 {
   control_command_received_time_ = this->now();
   control_cmd_ptr_ = msg;
@@ -163,25 +159,25 @@ void LeoVcuDriver::emergency_cmd_callback(
 }
 
 void LeoVcuDriver::gear_cmd_callback(
-  const autoware_auto_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg)
+  const autoware_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg)
 {
   gear_cmd_ptr_ = msg;
 }
 
 void LeoVcuDriver::turn_indicators_cmd_callback(
-  const autoware_auto_vehicle_msgs::msg::TurnIndicatorsCommand::ConstSharedPtr msg)
+  const autoware_vehicle_msgs::msg::TurnIndicatorsCommand::ConstSharedPtr msg)
 {
   turn_indicators_cmd_ptr_ = msg;
 }
 
 void LeoVcuDriver::hazard_lights_cmd_callback(
-  const autoware_auto_vehicle_msgs::msg::HazardLightsCommand::ConstSharedPtr msg)
+  const autoware_vehicle_msgs::msg::HazardLightsCommand::ConstSharedPtr msg)
 {
   hazard_lights_cmd_ptr_ = msg;
 }
 
 void LeoVcuDriver::engage_cmd_callback(
-  const autoware_auto_vehicle_msgs::msg::Engage::ConstSharedPtr msg)
+  const autoware_vehicle_msgs::msg::Engage::ConstSharedPtr msg)
 {
   engage_cmd_ = msg->engage;
 }
@@ -225,13 +221,6 @@ void LeoVcuDriver::llc_to_autoware_msg_adapter()
   current_state.control_mode_report.mode = control_mode_adapter_to_autoware(
     static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.mode));
 
-  // set headlight status
-  current_state.headlight_msg.report = headlight_adapter_to_autoware(
-    static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.headlight));
-
-  // set handbrake status
-  current_state.hand_brake_msg.report =
-    static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.hand_brake);
   // set actuation status
   current_state.actuation_status_msg.status.accel_status =
     static_cast<float>(llc_to_comp_data_.motion_info.throttle) / 100.0;
@@ -268,16 +257,16 @@ void LeoVcuDriver::autoware_to_llc_msg_adapter()
   // Update longitudinal mode
   long_mode_adapter_to_llc();
 
-  // Set headlight and wiper
-  comp_to_llc_cmd.vehicle_signal_cmd.headlight = 0;
+  // Set and wiper
   comp_to_llc_cmd.vehicle_signal_cmd.wiper = 0;
 
   // Set longitudinal acceleration and velocity
   comp_to_llc_cmd.long_cmd.set_long_accel = control_cmd_ptr_->longitudinal.acceleration;
-  comp_to_llc_cmd.long_cmd.set_limit_velocity = control_cmd_ptr_->longitudinal.speed;
+  comp_to_llc_cmd.long_cmd.set_limit_velocity = control_cmd_ptr_->longitudinal.velocity;
 
-  // If the handbrake is enabled or gear is in not drive, sent brake to llc
-  if (current_state.hand_brake_msg.report == 1 || current_state.gear_report_msg.report != 2) {
+  // Gear is in not drive, sent brake to llc
+  if ((static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.hand_brake) == 1)
+      || current_state.gear_report_msg.report != 2) {
     comp_to_llc_cmd.long_cmd.set_long_accel = soft_stop_acceleration;
     comp_to_llc_cmd.long_cmd.set_limit_velocity = 0.0;
     if (enable_long_actuation_mode) {
@@ -291,17 +280,6 @@ void LeoVcuDriver::autoware_to_llc_msg_adapter()
     -1 * control_cmd_ptr_->lateral.steering_tire_angle;
   comp_to_llc_cmd.front_wheel_cmd.set_front_wheel_angle_rate =
     control_cmd_ptr_->lateral.steering_tire_rotation_rate;
-}
-
-uint8_t LeoVcuDriver::headlight_adapter_to_autoware(uint8_t input) const
-{
-  if (input == 2) {
-    return autoware_auto_vehicle_msgs::msg::HeadlightsReport::ENABLE_LOW;
-  } else if (input == 3) {
-    return autoware_auto_vehicle_msgs::msg::HeadlightsReport::ENABLE_HIGH;
-  } else {
-    return autoware_auto_vehicle_msgs::msg::HeadlightsReport::DISABLE;
-  }
 }
 
 void LeoVcuDriver::control_mode_adapter_to_llc()
@@ -322,7 +300,7 @@ void LeoVcuDriver::control_mode_adapter_to_llc()
   const auto & current_mode = current_state.control_mode_report.mode;
   const bool is_mode_changed = current_mode != tmp_signal.mode;
   if(is_mode_changed){ // it is parked
-    if(current_state.gear_report_msg.report == autoware_auto_vehicle_msgs::msg::GearReport::PARK){
+    if(current_state.gear_report_msg.report == autoware_vehicle_msgs::msg::GearReport::PARK){
           comp_to_llc_cmd.vehicle_signal_cmd = tmp_signal;
     }
   }
@@ -331,30 +309,30 @@ void LeoVcuDriver::control_mode_adapter_to_llc()
 uint8_t LeoVcuDriver::control_mode_adapter_to_autoware(uint8_t input) const
 {
   if (input == 1) {
-    return autoware_auto_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS;
+    return autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS;
   } else if (input == 0 || input == 2) {
-    return autoware_auto_vehicle_msgs::msg::ControlModeReport::MANUAL;
+    return autoware_vehicle_msgs::msg::ControlModeReport::MANUAL;
   } else {
-    return autoware_auto_vehicle_msgs::msg::ControlModeReport::NO_COMMAND;
+    return autoware_vehicle_msgs::msg::ControlModeReport::NO_COMMAND;
   }
 }
 
 void LeoVcuDriver::indicator_adapter_to_autoware(const uint8_t input)
 {
   if (input == 0) {
-    current_state.hazard_msg.report = autoware_auto_vehicle_msgs::msg::HazardLightsReport::DISABLE;
-    current_state.turn_msg.report = autoware_auto_vehicle_msgs::msg::TurnIndicatorsReport::DISABLE;
+    current_state.hazard_msg.report = autoware_vehicle_msgs::msg::HazardLightsReport::DISABLE;
+    current_state.turn_msg.report = autoware_vehicle_msgs::msg::TurnIndicatorsReport::DISABLE;
   } else if (input == 3) {
-    current_state.hazard_msg.report = autoware_auto_vehicle_msgs::msg::HazardLightsReport::ENABLE;
-    current_state.turn_msg.report = autoware_auto_vehicle_msgs::msg::TurnIndicatorsReport::DISABLE;
+    current_state.hazard_msg.report = autoware_vehicle_msgs::msg::HazardLightsReport::ENABLE;
+    current_state.turn_msg.report = autoware_vehicle_msgs::msg::TurnIndicatorsReport::DISABLE;
   } else {
-    current_state.hazard_msg.report = autoware_auto_vehicle_msgs::msg::HazardLightsReport::DISABLE;
+    current_state.hazard_msg.report = autoware_vehicle_msgs::msg::HazardLightsReport::DISABLE;
     if (input == 1) {
       current_state.turn_msg.report =
-        autoware_auto_vehicle_msgs::msg::TurnIndicatorsReport::ENABLE_LEFT;
+        autoware_vehicle_msgs::msg::TurnIndicatorsReport::ENABLE_LEFT;
     } else {
       current_state.turn_msg.report =
-        autoware_auto_vehicle_msgs::msg::TurnIndicatorsReport::ENABLE_RIGHT;
+        autoware_vehicle_msgs::msg::TurnIndicatorsReport::ENABLE_RIGHT;
     }
   }
 }
@@ -365,16 +343,16 @@ void LeoVcuDriver::indicator_adapter_to_llc()
 
   if (
     hazard_lights_cmd_ptr_->command ==
-    autoware_auto_vehicle_msgs::msg::HazardLightsCommand::ENABLE)  // It is prior!
+    autoware_vehicle_msgs::msg::HazardLightsCommand::ENABLE)  // It is prior!
   {
     comp_to_llc_cmd.vehicle_signal_cmd.blinker = 3;
   } else if (
     turn_indicators_cmd_ptr_->command ==
-    autoware_auto_vehicle_msgs::msg::TurnIndicatorsCommand::ENABLE_LEFT) {
+    autoware_vehicle_msgs::msg::TurnIndicatorsCommand::ENABLE_LEFT) {
     comp_to_llc_cmd.vehicle_signal_cmd.blinker = 1;
   } else if (
     turn_indicators_cmd_ptr_->command ==
-    autoware_auto_vehicle_msgs::msg::TurnIndicatorsCommand::ENABLE_RIGHT) {
+    autoware_vehicle_msgs::msg::TurnIndicatorsCommand::ENABLE_RIGHT) {
     comp_to_llc_cmd.vehicle_signal_cmd.blinker = 2;
   } else {
     comp_to_llc_cmd.vehicle_signal_cmd.blinker = 0;
@@ -454,14 +432,10 @@ void LeoVcuDriver::llc_to_state_report_msg_adapter()
   vehicle_state_report_msg_.fuel = static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.fuel);
   vehicle_state_report_msg_.blinker =
     static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.blinker);
-  vehicle_state_report_msg_.headlight =
-    static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.headlight);
   vehicle_state_report_msg_.wiper =
     static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.wiper);
   vehicle_state_report_msg_.gear = static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.gear);
   vehicle_state_report_msg_.mode = static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.mode);
-  vehicle_state_report_msg_.hand_brake =
-    static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.hand_brake);
   vehicle_state_report_msg_.horn = static_cast<uint8_t>(llc_to_comp_data_.vehicle_sgl_status.horn);
 
   // Update State Report Msg with Motion Info
@@ -668,17 +642,6 @@ void LeoVcuDriver::publish_current_vehicle_state()
     turn_indicators_status_pub_->publish(current_state.turn_msg);
   }
 
-  /* publish headlight status */
-  {
-    current_state.hand_brake_msg.stamp = header.stamp;
-    hand_brake_pub_->publish(current_state.hand_brake_msg);
-  }
-
-  /* publish headlight status */
-  {
-    current_state.headlight_msg.stamp = header.stamp;
-    headlights_pub_->publish(current_state.headlight_msg);
-  }
   /* publish actuation (brake and accel pedal status) */
   {
     current_state.actuation_status_msg.header = header;

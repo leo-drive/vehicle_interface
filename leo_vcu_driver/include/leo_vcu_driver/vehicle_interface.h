@@ -19,31 +19,17 @@
 #define BUILD_VEHICLE_INTERFACE_H
 
 
-#include <autoware_auto_control_msgs/msg/ackermann_control_command.hpp>
-#include <autoware_auto_vehicle_msgs/msg/control_mode_report.hpp>
-#include <autoware_auto_vehicle_msgs/msg/engage.hpp>
-
-#include <autoware_auto_vehicle_msgs/msg/gear_command.hpp>
-#include <autoware_auto_vehicle_msgs/msg/gear_report.hpp>
-
-#include <autoware_auto_vehicle_msgs/msg/hazard_lights_command.hpp>
-#include <autoware_auto_vehicle_msgs/msg/hazard_lights_report.hpp>
-
-#include <autoware_auto_vehicle_msgs/msg/steering_report.hpp>
-
-#include <autoware_auto_vehicle_msgs/msg/turn_indicators_command.hpp>
-#include <autoware_auto_vehicle_msgs/msg/turn_indicators_report.hpp>
-
-#include <autoware_auto_vehicle_msgs/msg/velocity_report.hpp>
-
-#include <autoware_auto_vehicle_msgs/msg/hand_brake_command.hpp>
-#include <autoware_auto_vehicle_msgs/msg/hand_brake_report.hpp>
-
-#include <autoware_auto_vehicle_msgs/msg/headlights_command.hpp>
-#include <autoware_auto_vehicle_msgs/msg/headlights_report.hpp>
-
-#include <autoware_auto_vehicle_msgs/msg/raw_control_command.hpp>
-
+#include <autoware_control_msgs/msg/control.hpp>
+#include <autoware_vehicle_msgs/msg/control_mode_report.hpp>
+#include <autoware_vehicle_msgs/msg/engage.hpp>
+#include <autoware_vehicle_msgs/msg/gear_command.hpp>
+#include <autoware_vehicle_msgs/msg/gear_report.hpp>
+#include <autoware_vehicle_msgs/msg/hazard_lights_command.hpp>
+#include <autoware_vehicle_msgs/msg/hazard_lights_report.hpp>
+#include <autoware_vehicle_msgs/msg/steering_report.hpp>
+#include <autoware_vehicle_msgs/msg/turn_indicators_command.hpp>
+#include <autoware_vehicle_msgs/msg/turn_indicators_report.hpp>
+#include <autoware_vehicle_msgs/msg/velocity_report.hpp>
 
 #include <std_msgs/msg/string.hpp>
 #include <tier4_control_msgs/msg/gate_mode.hpp>
@@ -67,16 +53,14 @@ using namespace std;
 // Added for universe
 struct vehicle_current_state_
 {
-  autoware_auto_vehicle_msgs::msg::VelocityReport twist;
+  autoware_vehicle_msgs::msg::VelocityReport twist;
   tier4_vehicle_msgs::msg::SteeringWheelStatusStamped steering_wheel_status_msg;
   tier4_vehicle_msgs::msg::ActuationStatusStamped actuation_status_msg;
-  autoware_auto_vehicle_msgs::msg::SteeringReport steering_tire_status_msg;
-  autoware_auto_vehicle_msgs::msg::ControlModeReport control_mode_report;
-  autoware_auto_vehicle_msgs::msg::GearReport gear_report_msg;
-  autoware_auto_vehicle_msgs::msg::TurnIndicatorsReport turn_msg;
-  autoware_auto_vehicle_msgs::msg::HazardLightsReport hazard_msg;
-  autoware_auto_vehicle_msgs::msg::HandBrakeReport hand_brake_msg;
-  autoware_auto_vehicle_msgs::msg::HeadlightsReport headlight_msg;
+  autoware_vehicle_msgs::msg::SteeringReport steering_tire_status_msg;
+  autoware_vehicle_msgs::msg::ControlModeReport control_mode_report;
+  autoware_vehicle_msgs::msg::GearReport gear_report_msg;
+  autoware_vehicle_msgs::msg::TurnIndicatorsReport turn_msg;
+  autoware_vehicle_msgs::msg::HazardLightsReport hazard_msg;
 };
 
 // Added for to store autonomous system faults
